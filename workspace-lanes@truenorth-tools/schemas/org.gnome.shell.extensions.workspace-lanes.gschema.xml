@@ -1,0 +1,164 @@
+<!--
+SPDX-FileCopyrightText: 2016 Florian Müllner <fmuellner@gnome.org>
+
+SPDX-License-Identifier: GPL-2.0-or-later
+-->
+
+<schemalist gettext-domain="gnome-shell-extensions">
+  <enum id="org.gnome.shell.extensions.workspace-lanes.Layout">
+    <value value="0" nick="sections"/>
+    <value value="1" nick="list"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.workspace-lanes.GroupingMode">
+    <value value="0" nick="never"/>
+    <value value="1" nick="auto"/>
+    <value value="2" nick="always"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.workspace-lanes.Intensity">
+    <value value="0" nick="off"/>
+    <value value="1" nick="subtle"/>
+    <value value="2" nick="medium"/>
+    <value value="3" nick="strong"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.workspace-lanes.Backgrounds">
+    <value value="0" nick="off"/>
+    <value value="1" nick="recolor"/>
+    <value value="2" nick="gradient"/>
+  </enum>
+  <schema id="org.gnome.shell.extensions.workspace-lanes"
+          path="/org/gnome/shell/extensions/workspace-lanes/">
+    <key name="layout"
+         enum="org.gnome.shell.extensions.workspace-lanes.Layout">
+      <default>'sections'</default>
+      <summary>Taskbar layout</summary>
+      <description>
+        “sections” splits the taskbar into one even-width lane per
+        workspace. “list” is a single window list with a workspace switcher.
+      </description>
+    </key>
+    <key name="grouping-mode"
+         enum="org.gnome.shell.extensions.workspace-lanes.GroupingMode">
+      <default>'auto'</default>
+      <summary>When to group windows</summary>
+      <description>
+        Decides when to group windows from the same application.
+        Possible values are “never”, “auto” and “always”.
+      </description>
+    </key>
+    <key name="display-all-workspaces" type="b">
+      <default>true</default>
+      <summary>Show windows from all workspaces</summary>
+      <description>
+        In the window list layout, whether to show windows from all
+        workspaces or only the current one.
+      </description>
+    </key>
+    <key name="show-workspace-numbers" type="b">
+      <default>true</default>
+      <summary>Show a number badge at the start of each workspace lane</summary>
+    </key>
+    <key name="color-workspaces" type="b">
+      <default>false</default>
+      <summary>Colour-code workspaces</summary>
+      <description>
+        Give each workspace its own colour across its lane or band,
+        window buttons, previews and switcher thumbnails.
+      </description>
+    </key>
+    <key name="taskbar-colors-light"
+         enum="org.gnome.shell.extensions.workspace-lanes.Intensity">
+      <default>'strong'</default>
+      <summary>How strongly to colour the taskbar's lanes and window buttons, in light style</summary>
+      <description>Only when colour coding is on. “off”, “subtle”, “medium” or “strong”.</description>
+    </key>
+    <key name="taskbar-colors-dark"
+         enum="org.gnome.shell.extensions.workspace-lanes.Intensity">
+      <default>'subtle'</default>
+      <summary>How strongly to colour the taskbar's lanes and window buttons, in dark style</summary>
+      <description>Only when colour coding is on. “off”, “subtle”, “medium” or “strong”.</description>
+    </key>
+    <key name="preview-colors-light"
+         enum="org.gnome.shell.extensions.workspace-lanes.Intensity">
+      <default>'strong'</default>
+      <summary>How strongly to colour the hover preview and switcher thumbnails, in light style</summary>
+      <description>Only when colour coding is on. “off”, “subtle”, “medium” or “strong”.</description>
+    </key>
+    <key name="preview-colors-dark"
+         enum="org.gnome.shell.extensions.workspace-lanes.Intensity">
+      <default>'subtle'</default>
+      <summary>How strongly to colour the hover preview and switcher thumbnails, in dark style</summary>
+      <description>Only when colour coding is on. “off”, “subtle”, “medium” or “strong”.</description>
+    </key>
+    <key name="top-bar-color-light"
+         enum="org.gnome.shell.extensions.workspace-lanes.Intensity">
+      <default>'strong'</default>
+      <summary>How strongly to colour the top bar with the current workspace's colour, in light style</summary>
+      <description>Only when colour coding is on. “off”, “subtle”, “medium” or “strong”.</description>
+    </key>
+    <key name="top-bar-color-dark"
+         enum="org.gnome.shell.extensions.workspace-lanes.Intensity">
+      <default>'subtle'</default>
+      <summary>How strongly to colour the top bar with the current workspace's colour, in dark style</summary>
+      <description>Only when colour coding is on. “off”, “subtle”, “medium” or “strong”.</description>
+    </key>
+    <key name="match-accent-color" type="b">
+      <default>false</default>
+      <summary>Set GNOME's accent colour to the current workspace's</summary>
+      <description>
+        Only when colour coding is on. Your own accent colour is saved
+        and put back when this is off.
+      </description>
+    </key>
+    <key name="workspace-backgrounds"
+         enum="org.gnome.shell.extensions.workspace-lanes.Backgrounds">
+      <default>'off'</default>
+      <summary>A background per workspace in its colour</summary>
+      <description>
+        Only when colour coding is on. “recolor” shows the wallpaper in
+        each workspace's colour, “gradient” a gradient of it. Shown on the
+        desktop, in the overview and while switching workspaces.
+      </description>
+    </key>
+    <key name="light-shell" type="b">
+      <default>false</default>
+      <summary>Light top bar and menus in Light style</summary>
+      <description>
+        GNOME's top bar, menus and overview normally stay dark even when
+        GNOME Settings is set to Light. With this on they follow it.
+      </description>
+    </key>
+    <key name="saved-accent-color" type="s">
+      <default>''</default>
+      <summary>The user's own accent colour, while it is being overridden</summary>
+    </key>
+    <key name="workspace-colors" type="as">
+      <default>[]</default>
+      <summary>Workspace colours</summary>
+      <description>
+        Colours (#rrggbb) for workspaces 1, 2, 3 and so on. Missing or
+        empty entries use the default palette.
+      </description>
+    </key>
+    <key name="minimize-on-click" type="b">
+      <default>false</default>
+      <summary>Minimize the focused window when its button is clicked</summary>
+      <description>
+        When off, clicking the button of the window that already has focus
+        does nothing.
+      </description>
+    </key>
+    <key name="show-on-all-monitors" type="b">
+      <default>true</default>
+      <summary>Show the taskbar on all monitors</summary>
+    </key>
+    <key name="embed-previews" type="b">
+      <default>true</default>
+      <summary>Show workspace previews in the window list layout’s switcher</summary>
+    </key>
+    <key name="preview-delay" type="i">
+      <range min="0" max="2000"/>
+      <default>350</default>
+      <summary>Hover delay before showing a workspace preview, in milliseconds</summary>
+    </key>
+  </schema>
+</schemalist>

@@ -1,0 +1,13 @@
+{
+  "uuid": "workspace-lanes@truenorth-tools",
+  "name": "Workspace Lanes",
+  "description": "A taskbar laid out like your desktop. The bottom bar is split into one lane per workspace, and each lane shows that workspace's windows in the order they sit on screen, left to right, re-sorting as you move them. Hover a lane for a live preview of that workspace and click any window in it to jump straight there, or drag windows between lanes to move them. While you cycle through windows with Alt+` or Alt+Tab, the selected one is highlighted on the taskbar. Prefer a classic look? Switch to a single window list with a workspace switcher, keeping the same ordering. Optional colour coding gives each workspace its own colour. Based on GNOME's Window List extension.",
+  "url": "https://github.com/truenorth-tools/workspace-lanes",
+  "gettext-domain": "gnome-shell-extensions",
+  "settings-schema": "org.gnome.shell.extensions.workspace-lanes",
+  "shell-version": [
+    "50"
+  ],
+  "version": 1,
+  "version-name": "1.0"
+}
