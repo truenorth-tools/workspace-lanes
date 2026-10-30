@@ -7,6 +7,9 @@ A GNOME Shell 50 extension that replaces the built-in Window List. Windows
 are grouped by workspace (1 → n), then ordered left to right on screen,
 re-sorting live as you move them.
 
+![Hovering lanes to preview workspaces, jumping to a window from a preview,
+and dragging a window so its button re-sorts](screenshots/workspace-lanes-demo.gif)
+
 Two layouts, switchable from Settings or by right-clicking empty space on
 the bar:
 
@@ -20,6 +23,14 @@ the bar:
   moves between workspaces.
 - **Window list**: looks and behaves like Window List (with its workspace
   switcher on the right) but with the same spatial ordering.
+
+![Crowded lanes: full labels, icon-only buttons, and nine Files windows
+grouped into one, with the yellow workspace's preview open](screenshots/3-crowded-lanes.png)
+
+![The Window List layout, with the workspace switcher on the right](screenshots/4-window-list-layout.png)
+
+![Dark style: the teal workspace tints the top bar, its lane and the
+wallpaper](screenshots/5-dark-style.png)
 
 Monitors that don't have workspaces (when workspaces are on the primary
 monitor only) get a plain list of their own windows, sorted left to right.
@@ -78,6 +89,7 @@ Close the window or press Ctrl+C to stop it.
 - `lightShell.js`: optional light top bar and menus in Light style
 - `workspaceIndicator.js`, `workspacePrefs.js`: from Window List (switcher thumbnails and highlighting added)
 - `prefs.js`: settings window (Taskbar and Colours pages; Workspaces page from `workspacePrefs.js`)
+- `screenshots/`: images used in this README (not part of the extension)
 
 Licensed GPL-2.0-or-later, as it is derived from GNOME Shell Extensions'
 Window List.
