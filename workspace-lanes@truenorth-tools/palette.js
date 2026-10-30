@@ -9,6 +9,7 @@ export const COLOR_PARTS = {
     taskbar: 'taskbar-colors',
     preview: 'preview-colors',
     topBar: 'top-bar-color',
+    background: 'background-colors',
 };
 
 // How strongly each strength tints, relative to "medium"

@@ -18,7 +18,7 @@ import * as Workspace from 'resource:///org/gnome/shell/ui/workspace.js';
 import * as WorkspaceAnimation from 'resource:///org/gnome/shell/ui/workspaceAnimation.js';
 
 import {hexToHsl, hslToRgb} from './colors.js';
-import {prefersDark, workspaceColor} from './palette.js';
+import {COLOR_PARTS, INTENSITY, prefersDark, workspaceColor} from './palette.js';
 
 const EFFECT_NAME = 'workspace-lanes-background';
 
@@ -78,10 +78,11 @@ class WorkspaceLanesTintEffect extends Shell.GLSLEffect {
     }
 });
 
-// The shader's colours for a workspace colour @hex, in dark or light style
-function shadesFor(hex, style, dark) {
+// The shader's colours for a workspace colour @hex, in dark or light style,
+// with saturation scaled by @strength (1 at "strong")
+function shadesFor(hex, style, dark, strength) {
     const [h, s] = hexToHsl(hex);
-    const c = (sat, light) => hslToRgb(h, s * sat, light);
+    const c = (sat, light) => hslToRgb(h, Math.min(s * sat * strength, 1), light);
     if (style === 'gradient') {
         return dark
             ? {mode: 1, highlight: c(0.9, 0.3), mid: c(1, 0.2), shadow: c(1, 0.09)}
@@ -106,6 +107,8 @@ export class WorkspaceBackgrounds {
             'changed::color-workspaces', () => this._applyAll(),
             'changed::workspace-backgrounds', () => this._applyAll(),
             'changed::workspace-colors', () => this._applyAll(),
+            `changed::${COLOR_PARTS.background}-light`, () => this._applyAll(),
+            `changed::${COLOR_PARTS.background}-dark`, () => this._applyAll(),
             this);
         // the desktop follows the active workspace; indices shift when
         // workspaces are added, removed or moved
@@ -123,6 +126,14 @@ export class WorkspaceBackgrounds {
         if (!this._settings.get_boolean('color-workspaces'))
             return 'off';
         return this._settings.get_string('workspace-backgrounds');
+    }
+
+    // The saturation for the style chosen in GNOME Settings, relative to
+    // "strong" (0 when off)
+    _strength() {
+        const style = prefersDark(this._interface) ? 'dark' : 'light';
+        const level = this._settings.get_string(`${COLOR_PARTS.background}-${style}`);
+        return INTENSITY[level] / INTENSITY.strong;
     }
 
     _activeIndex() {
@@ -221,7 +232,8 @@ export class WorkspaceBackgrounds {
 
         let effect = actor.get_effect(EFFECT_NAME);
         const style = this._style;
-        if (style === 'off') {
+        const strength = this._strength();
+        if (style === 'off' || strength === 0) {
             if (effect)
                 actor.remove_effect(effect);
             return;
@@ -237,7 +249,7 @@ export class WorkspaceBackgrounds {
         const dark = prefersDark(this._interface);
         // a workspace removed mid-animation has no index any more
         const index = Math.max(getIndex(), 0);
-        effect.setColors(shadesFor(workspaceColor(custom, index), style, dark));
+        effect.setColors(shadesFor(workspaceColor(custom, index), style, dark, strength));
     }
 
     _applyAll() {

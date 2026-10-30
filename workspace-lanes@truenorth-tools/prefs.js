@@ -190,6 +190,7 @@ class StrengthGroup extends Adw.PreferencesGroup {
             taskbar: [_('Taskbar'), _('Lanes, bands and window buttons')],
             preview: [_('Previews'), _('The hover preview and the switcher’s thumbnails')],
             topBar: [_('Top bar'), _('At Medium it matches the focused window’s button')],
+            background: [_('Backgrounds'), _('How saturated the workspace backgrounds are, when they’re on')],
         };
         for (const [part, key] of Object.entries(COLOR_PARTS)) {
             const [title, subtitle] = rows[part];

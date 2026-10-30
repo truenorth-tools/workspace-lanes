@@ -101,6 +101,18 @@ SPDX-License-Identifier: GPL-2.0-or-later
       <summary>How strongly to colour the top bar with the current workspace's colour, in dark style</summary>
       <description>Only when colour coding is on. “off”, “subtle”, “medium” or “strong”.</description>
     </key>
+    <key name="background-colors-light"
+         enum="org.gnome.shell.extensions.workspace-lanes.Intensity">
+      <default>'medium'</default>
+      <summary>How saturated the workspace backgrounds are, in light style</summary>
+      <description>Only when workspace backgrounds are on. “off” shows the wallpaper as it is; “strong” is the most saturated.</description>
+    </key>
+    <key name="background-colors-dark"
+         enum="org.gnome.shell.extensions.workspace-lanes.Intensity">
+      <default>'medium'</default>
+      <summary>How saturated the workspace backgrounds are, in dark style</summary>
+      <description>Only when workspace backgrounds are on. “off” shows the wallpaper as it is; “strong” is the most saturated.</description>
+    </key>
     <key name="match-accent-color" type="b">
       <default>false</default>
       <summary>Set GNOME's accent colour to the current workspace's</summary>
