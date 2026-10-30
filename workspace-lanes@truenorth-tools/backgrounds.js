@@ -4,7 +4,8 @@
 // wallpaper recoloured (its light and dark parts mapped onto shades of the
 // colour, so its shapes stay) or a gradient. Done with a shader on each
 // background actor the shell draws for a workspace: the desktop's, the
-// overview's workspace cards and the ones that slide past when switching.
+// overview's workspace cards, the ones that slide past when switching
+// and the hover preview's.
 
 import Cogl from 'gi://Cogl';
 import GObject from 'gi://GObject';
@@ -179,6 +180,18 @@ export class WorkspaceBackgrounds {
                 visit(child);
         };
         visit(Main.layoutManager.overviewGroup);
+    }
+
+    // Recolour a background made outside the shell's own ones (the hover
+    // preview's), showing workspace getIndex()
+    track(bgManager, getIndex) {
+        this._track(bgManager, getIndex);
+    }
+
+    // Call when the workspace a tracked background shows has changed
+    refresh(bgManager) {
+        if (this._tracked.has(bgManager))
+            this._apply(bgManager);
     }
 
     _track(bgManager, getIndex) {

@@ -651,7 +651,7 @@ class Bar extends St.Widget {
 
     // @shared holds what all bars use: the window model, this extension's
     // settings and mutter's, and the window switching watcher
-    constructor({model, settings, mutterSettings, switcher}, perMonitor, monitor, extension) {
+    constructor({model, settings, mutterSettings, switcher, backgrounds}, perMonitor, monitor, extension) {
         super({
             name: 'panel',
             style_class: 'bottom-panel solid',
@@ -668,6 +668,7 @@ class Bar extends St.Widget {
         this._settings = settings;
         this._mutterSettings = mutterSettings;
         this._switcher = switcher;
+        this._backgrounds = backgrounds;
 
         this._box = new St.BoxLayout({x_expand: true, y_expand: true});
         this.add_child(this._box);
@@ -1076,7 +1077,7 @@ class Bar extends St.Widget {
         if (this._preview)
             return;
 
-        this._preview = new WorkspacePreview(this._monitor);
+        this._preview = new WorkspacePreview(this._monitor, this._backgrounds);
         this._preview.setColorsEnabled(this._settings.get_boolean('color-workspaces'));
         this._preview.connect('notify::hover', () => {
             if (this._preview.hover)
@@ -1468,6 +1469,7 @@ export default class WorkspaceLanesExtension extends Extension {
             settings: this._settings,
             mutterSettings: this._mutterSettings,
             switcher: this._switcher,
+            backgrounds: this._backgrounds,
         };
 
         Main.layoutManager.monitors.forEach(monitor => {

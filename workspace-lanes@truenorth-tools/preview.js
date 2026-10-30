@@ -54,7 +54,7 @@ export class WorkspacePreview extends St.BoxLayout {
         GObject.registerClass(this);
     }
 
-    constructor(monitor) {
+    constructor(monitor, backgrounds) {
         super({
             style_class: 'lanes-preview',
             orientation: Clutter.Orientation.VERTICAL,
@@ -65,6 +65,7 @@ export class WorkspacePreview extends St.BoxLayout {
         });
 
         this._monitor = monitor;
+        this._backgrounds = backgrounds;
         this._workspace = null;
         this._items = new Map();
         this._stacking = [];
@@ -134,6 +135,9 @@ export class WorkspacePreview extends St.BoxLayout {
             monitorIndex: monitor.index,
             vignette: false,
         });
+        // in the previewed workspace's colour, like the real desktop
+        backgrounds.track(this._bgManager, () => this._workspace?.index() ??
+            global.workspace_manager.get_active_workspace_index());
 
         this._windowsGroup = new Clutter.Actor();
         this._stageGroup.add_child(this._windowsGroup);
@@ -194,6 +198,7 @@ export class WorkspacePreview extends St.BoxLayout {
         this.add_style_class_name(this._wsClass);
 
         this._workspace = workspace;
+        this._backgrounds.refresh(this._bgManager);
         this._rebuild();
         this._position(anchor, barY);
 
