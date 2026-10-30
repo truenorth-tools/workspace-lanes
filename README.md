@@ -24,6 +24,12 @@ the bar:
 - **Window list**: looks and behaves like Window List (with its workspace
   switcher on the right) but with the same spatial ordering.
 
+![One lane per workspace, each with its windows in the order they sit
+on screen](screenshots/1-lanes.png)
+
+![Hovering the green lane opens a live preview of that
+workspace](screenshots/2-hover-preview.png)
+
 ![Crowded lanes: full labels, icon-only buttons, and nine Files windows
 grouped into one, with the yellow workspace's preview open](screenshots/3-crowded-lanes.png)
 
