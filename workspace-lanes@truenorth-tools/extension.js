@@ -391,12 +391,16 @@ class ButtonRow extends St.Widget {
         const byApp = new Map();
         for (const window of this._windows) {
             const app = tracker.get_window_app(window);
-            let group = app ? byApp.get(app) : null;
+            // with workspace bands, an app's windows on different
+            // workspaces stay apart so each band shows its own
+            const ws = this._groupWorkspaces ? workspaceIndex(window) : 0;
+            const groupKey = app ? `${app.get_id()}@${ws}` : null;
+            let group = groupKey ? byApp.get(groupKey) : null;
             if (!group) {
-                group = {app, windows: []};
+                group = {app, ws, windows: []};
                 groups.push(group);
-                if (app)
-                    byApp.set(app, group);
+                if (groupKey)
+                    byApp.set(groupKey, group);
             }
             group.windows.push(window);
         }
@@ -436,9 +440,9 @@ class ButtonRow extends St.Widget {
         // single windows keep the same key in both stages so their
         // buttons survive a switch between grouped and ungrouped
         const items = [];
-        for (const {app, windows} of groups) {
+        for (const {app, ws, windows} of groups) {
             if (stage.grouped && app && windows.length > 1) {
-                items.push({key: `app:${app.get_id()}`, app, windows});
+                items.push({key: `app:${app.get_id()}@${ws}`, app, windows});
             } else {
                 for (const window of windows)
                     items.push({key: `window:${window.get_id()}`, window});
