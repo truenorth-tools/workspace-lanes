@@ -32,6 +32,7 @@ import {AppButton, WindowButton} from './buttons.js';
 import {WorkspaceColors} from './colors.js';
 import {LightShell} from './lightShell.js';
 import {SwitcherDivider} from './divider.js';
+import {SettingsWindowFocus} from './settingsWindow.js';
 import {SwitcherWatcher} from './switcher.js';
 import {WorkspaceBackgrounds} from './backgrounds.js';
 import {WorkspacePreview} from './preview.js';
@@ -1499,6 +1500,7 @@ export default class WorkspaceLanesExtension extends Extension {
         this._lightShell = new LightShell(this._settings);
         this._backgrounds = new WorkspaceBackgrounds(this._settings, this._interfaceSettings);
         this._switcher = new SwitcherWatcher();
+        this._settingsWindowFocus = new SettingsWindowFocus();
 
         this._settings.connectObject('changed::show-on-all-monitors',
             () => this._buildBars(), this);
@@ -1547,6 +1549,9 @@ export default class WorkspaceLanesExtension extends Extension {
 
         this._switcher.destroy();
         this._switcher = null;
+
+        this._settingsWindowFocus.destroy();
+        this._settingsWindowFocus = null;
 
         this._backgrounds.destroy();
         this._backgrounds = null;

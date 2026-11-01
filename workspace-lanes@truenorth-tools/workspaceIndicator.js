@@ -668,9 +668,7 @@ class WorkspacesMenu extends PopupMenu.PopupMenu {
 
         this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        this.addAction(_('Settings'), () => {
-            extension.openPreferences();
-        });
+        this.addAction(_('Settings'), () => extension.openPreferences());
 
         this._desktopSettings =
             new Gio.Settings({schema_id: 'org.gnome.desktop.wm.preferences'});
