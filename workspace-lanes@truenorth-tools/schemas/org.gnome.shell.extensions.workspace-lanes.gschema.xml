@@ -152,7 +152,7 @@ SPDX-License-Identifier: GPL-2.0-or-later
       </description>
     </key>
     <key name="minimize-on-click" type="b">
-      <default>false</default>
+      <default>true</default>
       <summary>Minimize the focused window when its button is clicked</summary>
       <description>
         When off, clicking the button of the window that already has focus
