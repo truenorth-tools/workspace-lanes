@@ -167,6 +167,14 @@ SPDX-License-Identifier: GPL-2.0-or-later
       <default>true</default>
       <summary>Show workspace previews in the window list layout’s switcher</summary>
     </key>
+    <key name="switcher-width" type="i">
+      <range min="0" max="10000"/>
+      <default>0</default>
+      <summary>Width of the window list layout’s workspace switcher, in logical pixels</summary>
+      <description>
+        Set by dragging the divider between the window list and the switcher. 0 uses the switcher’s natural width.
+      </description>
+    </key>
     <key name="preview-delay" type="i">
       <range min="0" max="2000"/>
       <default>350</default>

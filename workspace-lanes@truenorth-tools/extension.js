@@ -31,6 +31,7 @@ import {
 import {AppButton, WindowButton} from './buttons.js';
 import {WorkspaceColors} from './colors.js';
 import {LightShell} from './lightShell.js';
+import {SwitcherDivider} from './divider.js';
 import {SwitcherWatcher} from './switcher.js';
 import {WorkspaceBackgrounds} from './backgrounds.js';
 import {WorkspacePreview} from './preview.js';
@@ -40,6 +41,11 @@ import {WorkspaceIndicator} from './workspaceIndicator.js';
 const SYNC_INTERVAL = 80;
 
 const DND_ACTIVATE_TIMEOUT = 500;
+
+// Logical px: the narrowest the divider can make the switcher, and the
+// room it always leaves for the window list
+const SWITCHER_MIN_WIDTH = 40;
+const ROW_MIN_WIDTH = 160;
 const PREVIEW_CLOSE_DELAY = 250;
 
 // Widths (logical px) a button needs before the row collapses further.
@@ -682,6 +688,7 @@ class Bar extends St.Widget {
         this._row = null;
         this._sections = null;
         this._workspaceIndicator = null;
+        this._divider = null;
         this._preview = null;
         this._previewSection = null;
         this._suppressedSection = null;
@@ -790,6 +797,8 @@ class Bar extends St.Widget {
             'changed::minimize-on-click', () => this._resyncRows(),
             'changed::display-all-workspaces', () => this.sync(null),
             'changed::color-workspaces', () => this._syncColors(),
+            'changed::switcher-width', () => this._applySwitcherWidth(),
+            'changed::embed-previews', () => this._updateDividerVisibility(),
             this);
         this._syncColors();
 
@@ -833,6 +842,7 @@ class Bar extends St.Widget {
         this._row = null;
         this._sections = null;
         this._workspaceIndicator = null;
+        this._divider = null;
 
         if (this._useSections) {
             this._sectionsBox = new St.Widget({
@@ -868,6 +878,15 @@ class Bar extends St.Widget {
             this._row.connect('button-hover', (row, windows) =>
                 this._onButtonHover(row.bands.find(b => b.hover) ?? null, windows));
 
+            this._divider = new SwitcherDivider(
+                () => this._workspaceIndicator.switcherWidth);
+            this._box.add_child(this._divider);
+            this._divider.connect('drag-width', (d, width) =>
+                this._workspaceIndicator.setSwitcherWidth(this._clampSwitcherWidth(width)));
+            this._divider.connect('drag-done', () => this._settings.set_int('switcher-width',
+                Math.round(this._clampSwitcherWidth(this._workspaceIndicator.switcherWidth))));
+            this._divider.connect('reset', () => this._settings.set_int('switcher-width', 0));
+
             const indicatorsBox = new St.BoxLayout({x_align: Clutter.ActorAlign.END});
             this._box.add_child(indicatorsBox);
 
@@ -880,10 +899,37 @@ class Bar extends St.Widget {
             this._workspaceIndicator.connectObject('menu-set',
                 () => this._onWorkspaceMenuSet(), this);
             this._onWorkspaceMenuSet();
+            this._workspaceIndicator.connectObject('notify::visible',
+                () => this._updateDividerVisibility(), this);
             this._updateWorkspaceIndicatorVisibility();
+            this._applySwitcherWidth();
         }
 
         this.sync(null);
+    }
+
+    // The divider is only useful when the switcher shows previews
+    _updateDividerVisibility() {
+        if (!this._divider)
+            return;
+        this._divider.visible = this._workspaceIndicator.visible &&
+            this._settings.get_boolean('embed-previews');
+    }
+
+    _clampSwitcherWidth(width) {
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        const max = Math.max(SWITCHER_MIN_WIDTH,
+            this._monitor.width / scale - ROW_MIN_WIDTH);
+        return Math.min(Math.max(width, SWITCHER_MIN_WIDTH), max);
+    }
+
+    _applySwitcherWidth() {
+        if (!this._workspaceIndicator || this._divider?.dragging)
+            return;
+        const width = this._settings.get_int('switcher-width');
+        this._workspaceIndicator.setSwitcherWidth(
+            width > 0 ? this._clampSwitcherWidth(width) : 0);
+        this._updateDividerVisibility();
     }
 
     _rebuildSections() {

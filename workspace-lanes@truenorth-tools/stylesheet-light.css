@@ -121,3 +121,13 @@
 .bottom-panel .window-button.lanes-switching > StWidget {
   box-shadow: inset 0 0 0 2px #222226;
 }
+
+/* divider: see stylesheet-dark.css */
+.lanes-divider-grip {
+  background-color: rgba(0, 0, 0, 0.18);
+}
+
+.lanes-divider:hover .lanes-divider-grip,
+.lanes-divider:active .lanes-divider-grip {
+  background-color: rgba(0, 0, 0, 0.5);
+}

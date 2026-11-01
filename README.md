@@ -22,7 +22,10 @@ the bar:
   Clicking empty space in a lane switches workspace, scrolling on the bar
   moves between workspaces.
 - **Window list**: looks and behaves like Window List (with its workspace
-  switcher on the right) but with the same spatial ordering.
+  switcher on the right) but with the same spatial ordering. Empty
+  workspaces take a quarter of the width of ones with windows, and you can
+  drag the divider before the switcher to give it more or less room
+  (double-click the divider to reset it).
 
 ![One lane per workspace, each with its windows in the order they sit
 on screen](screenshots/1-lanes.png)
@@ -93,7 +96,8 @@ Close the window or press Ctrl+C to stop it.
 - `palette.js`: default colours and colour strengths, shared with the settings window
 - `backgrounds.js`: optional per-workspace backgrounds (a shader on the shell's background actors)
 - `lightShell.js`: optional light top bar and menus in Light style
-- `workspaceIndicator.js`, `workspacePrefs.js`: from Window List (switcher thumbnails and highlighting added)
+- `workspaceIndicator.js`, `workspacePrefs.js`: from Window List (switcher thumbnails and highlighting added, thumbnails sized by use)
+- `divider.js`: the draggable divider between the window list and the switcher
 - `prefs.js`: settings window (Taskbar and Colours pages; Workspaces page from `workspacePrefs.js`)
 - `screenshots/`: images used in this README (not part of the extension)
 

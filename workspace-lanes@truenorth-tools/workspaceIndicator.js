@@ -21,6 +21,16 @@ import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/a
 
 const SCROLL_TIME = 100;
 
+// Workspace Lanes: thumbnail widths. A workspace with windows is
+// EMPTY_SHARE times as wide as an empty one; at natural size a used one
+// is USED_WIDTH logical pixels. When the switcher is given a width (the
+// taskbar's divider), the thumbnails share it in the same proportion,
+// but an empty one never gets narrower than MIN_UNIT.
+const USED_WIDTH = 52;
+const EMPTY_SHARE = 4;
+const MIN_UNIT = 5;
+const RESIZE_TIME = 150;
+
 let baseStyleClassName = '';
 
 // Workspace Lanes: the taskbar this switcher sits in, if any
@@ -119,6 +129,10 @@ class WorkspaceLayout extends Clutter.LayoutManager {
 }
 
 class WorkspaceThumbnail extends St.Button {
+    static [GObject.signals] = {
+        'used-changed': {},
+    };
+
     static [GObject.properties] = {
         'active': GObject.ParamSpec.boolean(
             'active', null, null,
@@ -181,8 +195,44 @@ class WorkspaceThumbnail extends St.Button {
             this._onRestacked.bind(this), this);
 
         this._workspace.list_windows().forEach(w => this._addWindow(w));
+        this._used = this.used;
         this._onRestacked();
     }
+
+    // Workspace Lanes: whether the workspace has windows of its own
+    // (ones on every workspace don't count)
+    get used() {
+        for (const window of this._windowPreviews.keys()) {
+            if (!window.skip_taskbar && !window.on_all_workspaces)
+                return true;
+        }
+        return false;
+    }
+
+    _checkUsed() {
+        // still constructing
+        if (this._used === undefined)
+            return;
+        const used = this.used;
+        if (used === this._used)
+            return;
+        this._used = used;
+        this.emit('used-changed');
+    }
+
+    setPreviewWidth(width, animate) {
+        this._preview.remove_transition('width');
+        if (animate && this.mapped) {
+            this._preview.ease({
+                width,
+                duration: RESIZE_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+        } else {
+            this._preview.width = width;
+        }
+    }
+
 
     get active() {
         return this._preview.has_style_class_name('active');
@@ -230,6 +280,12 @@ class WorkspaceThumbnail extends St.Button {
         preview.connect('clicked', (a, btn) => this.emit('clicked', btn));
         this._windowPreviews.set(window, preview);
         this._preview.child.add_child(preview);
+
+        window.connectObject(
+            'notify::skip-taskbar', () => this._checkUsed(),
+            'notify::on-all-workspaces', () => this._checkUsed(),
+            preview);
+        this._checkUsed();
     }
 
     _removeWindow(window) {
@@ -239,6 +295,7 @@ class WorkspaceThumbnail extends St.Button {
 
         this._windowPreviews.delete(window);
         preview.destroy();
+        this._checkUsed();
     }
 
     _onRestacked() {
@@ -312,9 +369,18 @@ class WorkspacePreviews extends Clutter.Actor {
             this);
 
         this.connect('notify::mapped', () => {
-            if (this.mapped)
+            if (this.mapped) {
+                // padding and spacing are only known once styled
+                this._sizeThumbnails(false);
                 this._updateScrollPosition();
+            }
         });
+
+        // Workspace Lanes: logical width the taskbar's divider gave the
+        // switcher; 0 means its natural width
+        this._targetWidth = 0;
+        St.ThemeContext.get_for_stage(global.stage).connectObject(
+            'notify::scale-factor', () => this._sizeThumbnails(false), this);
 
         this._thumbnailsBox = new St.BoxLayout({
             style_class: 'workspaces-box',
@@ -341,13 +407,83 @@ class WorkspacePreviews extends Clutter.Actor {
             thumbnail.setHighlight(windows);
     }
 
+    // Workspace Lanes: never ask for more than the divider allows; the
+    // scroll view handles anything that doesn't fit
+    vfunc_get_preferred_width(forHeight) {
+        const [min, nat] = super.vfunc_get_preferred_width(forHeight);
+        if (this._targetWidth <= 0)
+            return [min, nat];
+        const width = this._targetWidth * this._scale;
+        return [Math.min(min, width), width];
+    }
+
+    get _scale() {
+        return St.ThemeContext.get_for_stage(global.stage).scale_factor;
+    }
+
+    setTargetWidth(width) {
+        if (width === this._targetWidth)
+            return;
+        this._targetWidth = width;
+        this._sizeThumbnails(false);
+        this.queue_relayout();
+    }
+
+    // Workspace Lanes: share the width out, EMPTY_SHARE units to each used
+    // workspace and one to each empty one
+    _sizeThumbnails(animate) {
+        const thumbnails = [...this._thumbnailsBox];
+        if (thumbnails.length === 0)
+            return;
+
+        const scale = this._scale;
+        const share = t => t.used ? EMPTY_SHARE : 1;
+        let unit = USED_WIDTH / EMPTY_SHARE * scale;
+        if (this._targetWidth > 0) {
+            // padding, borders and spacing around the previews, from the
+            // theme (cached preferred widths can be stale here); only known
+            // once mapped, so until then use the last figure
+            const units = thumbnails.reduce((n, t) => n + share(t), 0);
+            unit = Math.max(MIN_UNIT * scale,
+                (this._targetWidth * scale - this._overhead(thumbnails)) / units);
+        }
+
+        // round the running total so the widths add up exactly
+        let total = 0;
+        for (const thumbnail of thumbnails) {
+            const width = Math.round((total + share(thumbnail)) * unit) -
+                Math.round(total * unit);
+            total += share(thumbnail);
+            thumbnail.setPreviewWidth(width, animate);
+        }
+    }
+
+    _overhead(thumbnails) {
+        if (!this._thumbnailsBox.mapped)
+            return this._lastOverhead ?? 0;
+        const sides = actor => {
+            const node = actor.get_theme_node();
+            return node.get_horizontal_padding() +
+                node.get_border_width(St.Side.LEFT) +
+                node.get_border_width(St.Side.RIGHT);
+        };
+        const spacing = this._thumbnailsBox.get_theme_node().get_length('spacing');
+        this._lastOverhead = spacing * (thumbnails.length - 1) +
+            thumbnails.reduce((n, t) => n + sides(t) + sides(t.get_child()), 0);
+        return this._lastOverhead;
+    }
+
     _updateThumbnails() {
         const {nWorkspaces} = global.workspace_manager;
 
         this._thumbnailsBox.destroy_all_children();
 
-        for (let i = 0; i < nWorkspaces; i++)
-            this._thumbnailsBox.add_child(new WorkspaceThumbnail(i));
+        for (let i = 0; i < nWorkspaces; i++) {
+            const thumbnail = new WorkspaceThumbnail(i);
+            thumbnail.connect('used-changed', () => this._sizeThumbnails(true));
+            this._thumbnailsBox.add_child(thumbnail);
+        }
+        this._sizeThumbnails(false);
 
         if (this.mapped)
             this._updateScrollPosition();
@@ -687,6 +823,20 @@ export class WorkspaceIndicator extends PanelMenu.Button {
     // Workspace Lanes: highlight windows in the thumbnails
     setHighlight(windows) {
         this._thumbnails.setHighlight(windows);
+    }
+
+    // Workspace Lanes: the switcher's width in logical pixels, set by the
+    // taskbar's divider (0 for its natural width)
+    setSwitcherWidth(width) {
+        this._thumbnails.setTargetWidth(width);
+    }
+
+    get switcherWidth() {
+        return this._thumbnails.width / this._thumbnails._scale;
+    }
+
+    get showsPreviews() {
+        return this._thumbnails.visible;
     }
 
     _onDestroy() {
