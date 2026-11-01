@@ -27,6 +27,14 @@ the bar:
   drag the divider before the switcher to give it more or less room
   (double-click the divider to reset it).
 
+**Scroll through your windows in order.** In the window list layout,
+scrolling anywhere on the window list moves focus to the next or previous
+window in the bar's order: through each workspace's windows from left to
+right, then on to the next workspace, switching to it as you go. Grouped
+windows are stepped through one at a time, and minimized ones are skipped.
+Scrolling over the workspace switcher changes workspace instead, and in the
+lanes layout scrolling anywhere on the bar changes workspace.
+
 ![One lane per workspace, each with its windows in the order they sit
 on screen](screenshots/1-lanes.png)
 

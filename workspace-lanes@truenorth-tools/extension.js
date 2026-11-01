@@ -1248,21 +1248,37 @@ class Bar extends St.Widget {
         if (this._sections)
             return Main.wm.handleWorkspaceScroll(event);
 
+        // Step through windows in bar order (by workspace, then left to
+        // right), one window at a time even where buttons are grouped, so
+        // a group never opens its menu and stops the scroll. Minimized
+        // windows are skipped rather than restored.
         const direction = event.get_scroll_direction();
-        let diff = 0;
-        if (direction === Clutter.ScrollDirection.DOWN)
+        let diff;
+        if (direction === Clutter.ScrollDirection.DOWN ||
+            direction === Clutter.ScrollDirection.RIGHT)
             diff = 1;
-        else if (direction === Clutter.ScrollDirection.UP)
+        else if (direction === Clutter.ScrollDirection.UP ||
+                 direction === Clutter.ScrollDirection.LEFT)
             diff = -1;
         else
             return Clutter.EVENT_PROPAGATE;
 
-        const children = this._row?.buttons.filter(c => c.visible) ?? [];
-        if (children.length === 0)
+        const windows = (this._row?.buttons ?? [])
+            .filter(b => b.visible)
+            .flatMap(b => b.getWindowList())
+            .filter(w => !w.minimized);
+        if (windows.length === 0)
             return Clutter.EVENT_PROPAGATE;
-        const active = children.findIndex(c => c.active);
-        const newActive = Math.max(0, Math.min(active + diff, children.length - 1));
-        children[newActive].activate();
+
+        const focus = global.display.focus_window;
+        let index = windows.indexOf(focus);
+        if (index < 0 && focus?.get_transient_for())
+            index = windows.indexOf(focus.get_transient_for());
+        const next = index < 0
+            ? (diff > 0 ? 0 : windows.length - 1)
+            : Math.max(0, Math.min(index + diff, windows.length - 1));
+        if (next !== index)
+            Main.activateWindow(windows[next]);
         return Clutter.EVENT_STOP;
     }
 
