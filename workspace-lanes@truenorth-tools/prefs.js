@@ -13,6 +13,7 @@ import Gtk from 'gi://Gtk';
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {COLOR_PARTS, DEFAULT_PALETTE, INTENSITY, workspaceColor} from './palette.js';
+import {getLayout, hasMinimize, setMinimize, wmSettings} from './titleButtons.js';
 import {WorkspacesPage} from './workspacePrefs.js';
 
 function addRadioRows(group, actionName, choices) {
@@ -340,6 +341,22 @@ class TaskbarPage extends Adw.PreferencesPage {
             subtitle: _('Clicking the focused window’s button minimizes it'),
             action_name: 'taskbar.minimize-on-click',
         }));
+
+        // GNOME's own setting, so follow it rather than keep a copy
+        const wm = wmSettings();
+        const minimizeButtonRow = new Adw.SwitchRow({
+            title: _('Minimize button on windows'),
+            subtitle: _('Adds minimize to window title bars (a GNOME setting, also in Tweaks)'),
+            active: hasMinimize(getLayout(wm)),
+        });
+        minimizeButtonRow.connect('notify::active', row => setMinimize(wm, row.active));
+        const wmChangedId = wm.connect('changed::button-layout', () => {
+            const shown = hasMinimize(getLayout(wm));
+            if (minimizeButtonRow.active !== shown)
+                minimizeButtonRow.active = shown;
+        });
+        minimizeButtonRow.connect('destroy', () => wm.disconnect(wmChangedId));
+        miscGroup.add(minimizeButtonRow);
 
         miscGroup.add(new Adw.SwitchRow({
             title: _('Show on all monitors'),

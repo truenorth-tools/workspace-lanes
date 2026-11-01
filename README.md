@@ -98,6 +98,7 @@ Close the window or press Ctrl+C to stop it.
 - `lightShell.js`: optional light top bar and menus in Light style
 - `workspaceIndicator.js`, `workspacePrefs.js`: from Window List (switcher thumbnails and highlighting added, thumbnails sized by use)
 - `divider.js`: the draggable divider between the window list and the switcher
+- `titleButtons.js`: the Settings switch that adds or removes the minimize button in window title bars
 - `settingsWindow.js`: brings an already-open extension settings window forward when its gear or Settings button is used again
 - `prefs.js`: settings window (Taskbar and Colours pages; Workspaces page from `workspacePrefs.js`)
 - `screenshots/`: images used in this README (not part of the extension)
