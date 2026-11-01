@@ -49,6 +49,49 @@ with Alt+Tab), the selected window's button is highlighted on the taskbar,
 so you can see which one you're about to pick and where it is. GNOME's own
 switcher and shortcuts are used as they are.
 
+## Settings
+
+Open Settings from the Extensions app, or by right-clicking empty space on
+the bar. If the settings window is already open, asking for it again
+brings it to the front (this also works for other extensions' gear and
+Settings buttons in the shell, such as Extension List's).
+
+**Taskbar**
+
+- **Layout**: workspace lanes or window list, how long to hover before a
+  preview opens, and whether lanes start with a workspace number.
+- **Window grouping**: never, when space is limited (default), or always.
+  Grouping stays within each workspace.
+- **Click to minimize** (on by default): clicking the focused window's
+  button minimizes it, and clicking again brings it back. The button keeps
+  its place on the taskbar.
+- **Minimize button on windows** (off by default): adds GNOME's minimize
+  button to window title bars. This is GNOME's own setting, the same one
+  GNOME Tweaks changes, so the switch stays in step with it.
+- **Show on all monitors** and **Show windows from all workspaces** (the
+  latter for the window list layout).
+
+**Colours**
+
+- **Colour-code workspaces**: each workspace gets its own colour on the
+  taskbar, in previews and on the top bar. Pick the colours per workspace.
+- **Colour strength**: Off, Subtle, Medium or Strong for the taskbar,
+  previews, top bar and backgrounds, set separately for light and dark
+  style.
+- **Match GNOME's accent colour**: the system accent colour follows the
+  current workspace.
+- **Workspace backgrounds**: off, a recoloured wallpaper, or a gradient in
+  each workspace's colour.
+- **Light top bar and menus in Light style**: GNOME's top bar and menus
+  follow GNOME Settings' Light/Dark choice instead of staying dark.
+
+**Workspaces**: whether the window list layout's switcher shows previews
+or the workspace's name, plus GNOME's workspace options (dynamic or a
+fixed number, and workspace names), as in Window List.
+
+In the window list layout, the switcher's width is set by dragging the
+divider before it rather than in Settings.
+
 ## Install
 
 From a clone of this repository:
