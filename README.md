@@ -10,30 +10,52 @@ re-sorting live as you move them.
 ![Hovering lanes to preview workspaces, jumping to a window from a preview,
 and dragging a window so its button re-sorts](screenshots/workspace-lanes-demo.gif)
 
-Two layouts, switchable from Settings or by right-clicking empty space on
-the bar:
+## Highlights
 
-- **Workspace lanes** (default): the bar is split into one even-width
+- **Every window in a predictable place.** Buttons follow your desktop:
+  workspace 1's windows first, then each workspace's windows left to
+  right as they sit on screen. They re-sort live as you move windows.
+- **Scroll through your windows in order.** In the window list layout,
+  scrolling on the window list moves focus to the next or previous window
+  in the bar's order. At the end of a workspace it carries on into the
+  next one and switches to it. Grouped windows are stepped through one at
+  a time, and minimized ones are skipped.
+- **A colour for every workspace.** The taskbar, top bar, previews,
+  wallpaper and even GNOME's accent colour can follow the workspace you're
+  on, so you can tell where you are at a glance.
+- **Click to minimize, click to bring back.** Clicking the focused
+  window's button minimizes it, and the button keeps its place on the bar.
+- **Drag a window to another workspace.** Drop its button on another
+  workspace's lane, on a workspace preview, or on a switcher thumbnail.
+- **See where Alt+Tab is taking you.** While you switch between an app's
+  windows with Alt+` (or between windows with Alt+Tab), the selected
+  window's button is highlighted on the taskbar. GNOME's own switcher and
+  shortcuts are used as they are.
+
+If you keep lots of windows open across several workspaces and lose track
+of them (a common experience with ADHD), Workspace Lanes gives each window
+a fixed, visible place. Windows stay in the same order as on screen, and
+each workspace has its own colour.
+
+## Two layouts
+
+Switch between them in Settings or by right-clicking empty space on the
+bar.
+
+- **Window list**: looks and behaves like GNOME's Window List, with its
+  workspace switcher on the right, but uses the ordering described above.
+  Empty workspaces take a quarter of the width of ones with windows. Drag
+  the divider before the switcher to give it more or less room
+  (double-click the divider to reset it). Scrolling over the switcher
+  changes workspace.
+- **Workspace lanes** (the default): the bar is split into one even-width
   lane per workspace, and each window's button sits in its workspace's
   lane. Crowded lanes collapse in stages: labels shrink, then buttons go
   icon-only, then windows of the same app merge into one icon with a
-  count. Hover a lane for a live preview of that workspace; click a window
-  in the preview to jump to it, or the empty space to switch workspace.
-  Clicking empty space in a lane switches workspace, scrolling on the bar
-  moves between workspaces.
-- **Window list**: looks and behaves like Window List (with its workspace
-  switcher on the right) but with the same spatial ordering. Empty
-  workspaces take a quarter of the width of ones with windows, and you can
-  drag the divider before the switcher to give it more or less room
-  (double-click the divider to reset it).
-
-**Scroll through your windows in order.** In the window list layout,
-scrolling anywhere on the window list moves focus to the next or previous
-window in the bar's order: through each workspace's windows from left to
-right, then on to the next workspace, switching to it as you go. Grouped
-windows are stepped through one at a time, and minimized ones are skipped.
-Scrolling over the workspace switcher changes workspace instead, and in the
-lanes layout scrolling anywhere on the bar changes workspace.
+  count. Hover a lane for a live preview of that workspace. Click a window
+  in the preview to jump to it, or click its empty space to switch
+  workspace. Clicking empty space in a lane also switches workspace, and
+  scrolling on the bar moves between workspaces.
 
 ![One lane per workspace, each with its windows in the order they sit
 on screen](screenshots/1-lanes.png)
@@ -44,18 +66,14 @@ workspace](screenshots/2-hover-preview.png)
 ![Crowded lanes: full labels, icon-only buttons, and nine Files windows
 grouped into one, with the yellow workspace's preview open](screenshots/3-crowded-lanes.png)
 
-![The Window List layout, with the workspace switcher on the right](screenshots/4-window-list-layout.png)
+![The window list layout, with the workspace switcher on the right and
+narrower thumbnails for empty workspaces](screenshots/4-window-list-layout.png)
 
 ![Dark style: the teal workspace tints the top bar, its lane and the
 wallpaper](screenshots/5-dark-style.png)
 
 Monitors that don't have workspaces (when workspaces are on the primary
 monitor only) get a plain list of their own windows, sorted left to right.
-
-While you switch between an app's windows with Alt+` (or between windows
-with Alt+Tab), the selected window's button is highlighted on the taskbar,
-so you can see which one you're about to pick and where it is. GNOME's own
-switcher and shortcuts are used as they are.
 
 ## Settings
 
@@ -102,7 +120,25 @@ divider before it rather than in Settings.
 
 ## Install
 
-From a clone of this repository:
+Workspace Lanes needs GNOME Shell 50.
+
+**From a release:** download
+`workspace-lanes@truenorth-tools.shell-extension.zip` from the
+[latest release](https://github.com/truenorth-tools/workspace-lanes/releases/latest),
+then run:
+
+```bash
+gnome-extensions install --force workspace-lanes@truenorth-tools.shell-extension.zip
+```
+
+Log out and back in, then (first install only):
+
+```bash
+gnome-extensions disable window-list@gnome-shell-extensions.gcampax.github.com
+gnome-extensions enable workspace-lanes@truenorth-tools
+```
+
+**From a clone of this repository:**
 
 ```bash
 ./install.sh
