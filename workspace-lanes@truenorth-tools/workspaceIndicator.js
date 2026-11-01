@@ -407,14 +407,16 @@ class WorkspacePreviews extends Clutter.Actor {
             thumbnail.setHighlight(windows);
     }
 
-    // Workspace Lanes: never ask for more than the divider allows; the
-    // scroll view handles anything that doesn't fit
+    // Workspace Lanes: take exactly the width the divider set, no more
+    // (the scroll view handles anything that doesn't fit) and no less
+    // (otherwise the bar shares any shortfall with the window list, and
+    // the divider stops following the pointer)
     vfunc_get_preferred_width(forHeight) {
         const [min, nat] = super.vfunc_get_preferred_width(forHeight);
         if (this._targetWidth <= 0)
             return [min, nat];
         const width = this._targetWidth * this._scale;
-        return [Math.min(min, width), width];
+        return [width, width];
     }
 
     get _scale() {

@@ -888,7 +888,13 @@ class Bar extends St.Widget {
                 Math.round(this._clampSwitcherWidth(this._workspaceIndicator.switcherWidth))));
             this._divider.connect('reset', () => this._settings.set_int('switcher-width', 0));
 
-            const indicatorsBox = new St.BoxLayout({x_align: Clutter.ActorAlign.END});
+            // set x_expand explicitly: otherwise the switcher's own
+            // expanding child makes this box take half of any spare width,
+            // leaving a gap between the divider and the switcher
+            const indicatorsBox = new St.BoxLayout({
+                x_align: Clutter.ActorAlign.END,
+                x_expand: false,
+            });
             this._box.add_child(indicatorsBox);
 
             this._workspaceIndicator = new BottomWorkspaceIndicator({
