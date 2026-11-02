@@ -84,6 +84,12 @@ narrower thumbnails for empty workspaces](screenshots/4-window-list-layout.png)
 ![Dark style: the teal workspace tints the top bar, its lane and the
 wallpaper](screenshots/5-dark-style.png)
 
+![The exposé: clicking the current workspace's lane again spreads its
+windows out, here with Files hovered](screenshots/6-expose.png)
+
+![The applications menu, opened from the bottom-left corner, with
+Favourites nearest the button](screenshots/7-apps-menu.png)
+
 Monitors that don't have workspaces (when workspaces are on the primary
 monitor only) get a plain list of their own windows, sorted left to right.
 
