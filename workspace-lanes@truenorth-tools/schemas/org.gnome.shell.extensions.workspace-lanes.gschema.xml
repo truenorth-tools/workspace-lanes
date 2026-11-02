@@ -159,6 +159,14 @@ SPDX-License-Identifier: GPL-2.0-or-later
         does nothing.
       </description>
     </key>
+    <key name="show-apps-menu" type="b">
+      <default>true</default>
+      <summary>Show an applications menu button at the start of the taskbar</summary>
+      <description>
+        A Start-menu-style button in the bottom-left corner that opens a
+        menu of favourite apps and apps by category.
+      </description>
+    </key>
     <key name="show-on-all-monitors" type="b">
       <default>true</default>
       <summary>Show the taskbar on all monitors</summary>

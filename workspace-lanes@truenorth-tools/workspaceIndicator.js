@@ -340,7 +340,11 @@ class WorkspaceThumbnail extends St.Button {
 
     on_clicked() {
         const ws = global.workspace_manager.get_workspace_by_index(this._index);
-        if (ws)
+        // Workspace Lanes: clicking the current workspace again opens the
+        // taskbar's exposé
+        if (ws?.active)
+            taskbarOf(this)?._lanesOnActiveTargetClicked?.(this);
+        else if (ws)
             ws.activate(global.get_current_time());
     }
 }

@@ -29,12 +29,14 @@ import {
 } from 'resource:///org/gnome/shell/ui/overview.js';
 
 import {AppButton, WindowButton} from './buttons.js';
+import {AppsMenuButton} from './appsMenu.js';
 import {WorkspaceColors} from './colors.js';
 import {LightShell} from './lightShell.js';
 import {SwitcherDivider} from './divider.js';
 import {SettingsWindowFocus} from './settingsWindow.js';
 import {SwitcherWatcher} from './switcher.js';
 import {WorkspaceBackgrounds} from './backgrounds.js';
+import {LanesExpose} from './expose.js';
 import {WorkspacePreview} from './preview.js';
 import {WorkspaceIndicator} from './workspaceIndicator.js';
 
@@ -571,6 +573,11 @@ class EqualColumnsLayout extends Clutter.LayoutManager {
 
 // One workspace's slice of the bar
 class Section extends St.Widget {
+    // clicked while already the current workspace
+    static [GObject.signals] = {
+        'clicked-active': {},
+    };
+
     static {
         GObject.registerClass(this);
     }
@@ -633,8 +640,12 @@ class Section extends St.Widget {
             return Clutter.EVENT_PROPAGATE;
 
         this._pressed = false;
-        if (event.get_button() === Clutter.BUTTON_PRIMARY && this._onEmptySpace(event))
-            this.workspace.activate(event.get_time());
+        if (event.get_button() === Clutter.BUTTON_PRIMARY && this._onEmptySpace(event)) {
+            if (this.workspace.active)
+                this.emit('clicked-active');
+            else
+                this.workspace.activate(event.get_time());
+        }
         return Clutter.EVENT_STOP;
     }
 }
@@ -692,6 +703,7 @@ class Bar extends St.Widget {
         this._divider = null;
         this._preview = null;
         this._previewSection = null;
+        this._expose = null;
         this._suppressedSection = null;
         this._suppressedWindows = null;
         this._hoveredWindows = null;
@@ -794,6 +806,7 @@ class Bar extends St.Widget {
 
         this._settings.connectObject(
             'changed::layout', () => this._rebuild(),
+            'changed::show-apps-menu', () => this._rebuild(),
             'changed::grouping-mode', () => this._resyncRows(),
             'changed::minimize-on-click', () => this._resyncRows(),
             'changed::display-all-workspaces', () => this.sync(null),
@@ -823,6 +836,7 @@ class Bar extends St.Widget {
         const enabled = this._settings.get_boolean('color-workspaces');
         setStyleClass(this, 'lanes-colors', enabled);
         this._preview?.setColorsEnabled(enabled);
+        this._expose?.setColorsEnabled(enabled);
     }
 
     // Whether this monitor has workspaces of its own (only the primary
@@ -840,10 +854,18 @@ class Bar extends St.Widget {
     _rebuild() {
         this._hidePreview();
         this._box.destroy_all_children();
+        this._appsButton = null;
         this._row = null;
         this._sections = null;
         this._workspaceIndicator = null;
         this._divider = null;
+
+        // the applications menu, like a Start menu, in the corner
+        if (this._settings.get_boolean('show-apps-menu')) {
+            this._appsButton = new AppsMenuButton(this._menuManager);
+            // panel buttons live in a container of their own
+            this._box.add_child(this._appsButton.container);
+        }
 
         if (this._useSections) {
             this._sectionsBox = new St.Widget({
@@ -948,6 +970,7 @@ class Bar extends St.Widget {
         for (let i = 0; i < nWorkspaces; i++) {
             const section = new Section(i, this._settings, this._switcher);
             section.connect('notify::hover', () => this._onSectionHover(section));
+            section.connect('clicked-active', () => this._toggleExpose(section.workspace));
             section.row.connect('button-hover',
                 (row, windows) => this._onButtonHover(section, windows));
             this._watchRowDrags(section.row);
@@ -995,6 +1018,7 @@ class Bar extends St.Widget {
         }
 
         this._preview?.refresh();
+        this._expose?.refresh();
     }
 
     _resyncRows() {
@@ -1034,6 +1058,23 @@ class Bar extends St.Widget {
     // Called by switcher thumbnails, which live in workspaceIndicator.js
     _lanesOnTargetHover(target) {
         this._onSectionHover(target);
+    }
+
+    // Called by a switcher thumbnail clicked while its workspace is
+    // already the current one
+    _lanesOnActiveTargetClicked(target) {
+        this._toggleExpose(target.workspace);
+    }
+
+    // Lanes exposé (expose.js): the current workspace's windows spread
+    // out, opened by clicking its lane or thumbnail a second time
+    _toggleExpose(workspace) {
+        if (!this._expose) {
+            this._expose = new LanesExpose(this._monitor, this._backgrounds);
+            this._expose.setColorsEnabled(this._settings.get_boolean('color-workspaces'));
+            this._expose.connect('opened', () => this._hidePreview());
+        }
+        this._expose.toggle(workspace);
     }
 
     _lanesOnTargetDragOver(target, source) {
@@ -1097,6 +1138,9 @@ class Bar extends St.Widget {
 
     _scheduleOpen(section) {
         this._clearOpenTimeout();
+        // the exposé already shows the workspace
+        if (this._expose?.isOpen)
+            return;
         const delay = this._settings.get_int('preview-delay');
         this._openTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
             this._openTimeoutId = 0;
@@ -1154,6 +1198,8 @@ class Bar extends St.Widget {
     }
 
     _showPreview(section) {
+        if (this._expose?.isOpen)
+            return;
         this._ensurePreview();
         this._previewSection = section;
         const [, barY] = this.get_transformed_position();
@@ -1208,7 +1254,8 @@ class Bar extends St.Widget {
     _onEmptySpace(event) {
         const target = global.stage.get_event_actor(event);
         return !findAncestor(target, this, a =>
-            a instanceof St.Button || a === this._workspaceIndicator);
+            a instanceof St.Button || a === this._workspaceIndicator ||
+            a === this._appsButton);
     }
 
     // Right-click on empty space: switch layout or open settings
@@ -1481,6 +1528,8 @@ class Bar extends St.Widget {
 
     _onDestroy() {
         this._hidePreview();
+        this._expose?.destroy();
+        this._expose = null;
         if (this._preview) {
             Main.layoutManager.removeChrome(this._preview);
             this._preview.destroy();

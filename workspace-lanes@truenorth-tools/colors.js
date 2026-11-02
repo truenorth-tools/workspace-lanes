@@ -179,6 +179,8 @@ ${ws} .window-list-workspace-indicator-window-preview { background-color: ${thum
 ${ws} .window-list-workspace-indicator-window-preview.active { background-color: ${thumb.active}; border-color: ${thumb.activeEdge}; }
 ${ws} .window-list-workspace-indicator-window-preview.lanes-lit { background-color: ${thumb.lit}; border-color: ${thumb.litEdge}; }
 ${ws} .window-list-workspace-indicator-window-preview.lanes-dim { background-color: ${thumb.dim}; border-color: ${thumb.dimEdge}; }
+.lanes-colors.lanes-expose.lanes-ws-${index} .lanes-expose-tint { background-color: ${hsla(h, vividS * level.preview, 0.3, 0.35)}; }
+.lanes-colors.lanes-expose.lanes-ws-${index} .lanes-expose-ring { border-color: ${pvivid(1, light ? 0 : 0.1)}; }
 `;
     }
     if (level.topBar) {

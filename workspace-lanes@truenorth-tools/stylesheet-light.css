@@ -131,3 +131,14 @@
 .lanes-divider:active .lanes-divider-grip {
   background-color: rgba(0, 0, 0, 0.5);
 }
+
+/* applications menu button: see stylesheet-dark.css */
+.bottom-panel .lanes-apps-button:hover,
+.bottom-panel .lanes-apps-button:checked {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.bottom-panel .lanes-apps-button:active,
+.bottom-panel .lanes-apps-button:checked:hover {
+  background-color: rgba(0, 0, 0, 0.14);
+}

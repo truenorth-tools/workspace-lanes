@@ -284,7 +284,7 @@ class TaskbarPage extends Adw.PreferencesPage {
         this._settings = settings;
         for (const key of ['layout', 'grouping-mode', 'show-on-all-monitors',
             'display-all-workspaces', 'minimize-on-click',
-            'show-workspace-numbers'])
+            'show-workspace-numbers', 'show-apps-menu'])
             this._actionGroup.add_action(this._settings.create_action(key));
 
         const layoutGroup = new Adw.PreferencesGroup({
@@ -335,6 +335,12 @@ class TaskbarPage extends Adw.PreferencesPage {
 
         const miscGroup = new Adw.PreferencesGroup();
         this.add(miscGroup);
+
+        miscGroup.add(new Adw.SwitchRow({
+            title: _('Applications menu'),
+            subtitle: _('A button in the bottom-left corner with your favourite apps and apps by category'),
+            action_name: 'taskbar.show-apps-menu',
+        }));
 
         miscGroup.add(new Adw.SwitchRow({
             title: _('Click to minimize'),

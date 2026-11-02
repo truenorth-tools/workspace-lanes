@@ -23,6 +23,17 @@ and dragging a window so its button re-sorts](screenshots/workspace-lanes-demo.g
 - **A colour for every workspace.** The taskbar, top bar, previews,
   wallpaper and even GNOME's accent colour can follow the workspace you're
   on, so you can tell where you are at a glance.
+- **An exposé of your own.** Click the current workspace's lane (its
+  empty space or number) or switcher thumbnail again to spread its
+  windows out over the workspace's wallpaper, in the same order as the
+  lane. Click a window to bring it forward, or click the lane again (or
+  press Esc) to leave. Scrolling still switches workspace, and the exposé
+  follows along. It's separate from GNOME's overview: Super still opens
+  that.
+- **An applications menu in the corner.** A button at the bottom left
+  opens a Start-menu-style list of your favourite apps and apps by
+  category (adapted from GNOME's Applications Menu extension, which puts
+  it on the top bar).
 - **Click to minimize, click to bring back.** Clicking the focused
   window's button minimizes it, and the button keeps its place on the bar.
 - **Drag a window to another workspace.** Drop its button on another
@@ -54,8 +65,9 @@ bar.
   icon-only, then windows of the same app merge into one icon with a
   count. Hover a lane for a live preview of that workspace. Click a window
   in the preview to jump to it, or click its empty space to switch
-  workspace. Clicking empty space in a lane also switches workspace, and
-  scrolling on the bar moves between workspaces.
+  workspace. Clicking empty space in a lane also switches workspace (click
+  the current workspace's lane again for the exposé), and scrolling on the
+  bar moves between workspaces.
 
 ![One lane per workspace, each with its windows in the order they sit
 on screen](screenshots/1-lanes.png)
@@ -88,6 +100,9 @@ Settings buttons in the shell, such as Extension List's).
   preview opens, and whether lanes start with a workspace number.
 - **Window grouping**: never, when space is limited (default), or always.
   Grouping stays within each workspace.
+- **Applications menu** (on by default): the apps button at the bottom
+  left. If you also use GNOME's Applications Menu extension, you can turn
+  that off to keep just this one.
 - **Click to minimize** (on by default): clicking the focused window's
   button minimizes it, and clicking again brings it back. The button keeps
   its place on the taskbar.
@@ -177,7 +192,9 @@ Close the window or press Ctrl+C to stop it.
 
 - `extension.js`: window model, ordering, button rows (`ButtonRow`, collapse logic), workspace lanes (`Section`), bar
 - `buttons.js`: window and app buttons (from Window List)
+- `appsMenu.js`: the applications menu button (from GNOME Shell Extensions' Apps Menu)
 - `preview.js`: hover preview of a workspace
+- `expose.js`: the exposé (the workspace's windows spread out) opened by clicking the current workspace again
 - `switcher.js`: follows the window selected in GNOME's Alt+` and Alt+Tab switchers
 - `colors.js`: workspace colour coding (generated stylesheet, top bar tint, accent colour)
 - `palette.js`: default colours and colour strengths, shared with the settings window
