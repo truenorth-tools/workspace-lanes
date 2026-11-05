@@ -6,8 +6,9 @@
   "gettext-domain": "gnome-shell-extensions",
   "settings-schema": "org.gnome.shell.extensions.workspace-lanes",
   "shell-version": [
-    "50"
+    "50",
+    "51"
   ],
-  "version": 7,
-  "version-name": "1.4"
+  "version": 8,
+  "version-name": "1.4.1"
 }

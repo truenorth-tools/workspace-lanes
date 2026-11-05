@@ -7,6 +7,7 @@
 // overview's workspace cards, the ones that slide past when switching
 // and the hover preview's.
 
+import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
@@ -54,29 +55,47 @@ if (c.a > 0.0) {
 }
 `;
 
-const TintEffect = GObject.registerClass(
-class WorkspaceLanesTintEffect extends Shell.GLSLEffect {
-    _init() {
-        super._init();
+// GNOME 51 replaced Shell.GLSLEffect with Clutter.ShaderEffect, which
+// takes its snippet from a vfunc and sets uniforms by name
+const TintEffect = Shell.GLSLEffect
+    ? GObject.registerClass(
+        class WorkspaceLanesTintEffect extends Shell.GLSLEffect {
+            _init() {
+                super._init();
 
-        this._locations = {};
-        for (const name of ['mode', 'shadow', 'mid', 'highlight'])
-            this._locations[name] = this.get_uniform_location(name);
-    }
+                this._locations = {};
+                for (const name of ['mode', 'shadow', 'mid', 'highlight'])
+                    this._locations[name] = this.get_uniform_location(name);
+            }
 
-    vfunc_build_pipeline() {
-        this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT,
-            DECLARATIONS, CODE, false);
-    }
+            vfunc_build_pipeline() {
+                this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT,
+                    DECLARATIONS, CODE, false);
+            }
 
-    setColors({mode, shadow, mid, highlight}) {
-        this.set_uniform_float(this._locations.mode, 1, [mode]);
-        this.set_uniform_float(this._locations.shadow, 3, shadow);
-        this.set_uniform_float(this._locations.mid, 3, mid);
-        this.set_uniform_float(this._locations.highlight, 3, highlight);
-        this.queue_repaint();
-    }
-});
+            setColors({mode, shadow, mid, highlight}) {
+                this.set_uniform_float(this._locations.mode, 1, [mode]);
+                this.set_uniform_float(this._locations.shadow, 3, shadow);
+                this.set_uniform_float(this._locations.mid, 3, mid);
+                this.set_uniform_float(this._locations.highlight, 3, highlight);
+                this.queue_repaint();
+            }
+        })
+    : GObject.registerClass(
+        class WorkspaceLanesTintEffect extends Clutter.ShaderEffect {
+            vfunc_get_static_snippet() {
+                return Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT,
+                    DECLARATIONS, CODE);
+            }
+
+            setColors({mode, shadow, mid, highlight}) {
+                this.set_uniform_float('mode', 1, [mode]);
+                this.set_uniform_float('shadow', 3, shadow);
+                this.set_uniform_float('mid', 3, mid);
+                this.set_uniform_float('highlight', 3, highlight);
+                this.queue_repaint();
+            }
+        });
 
 // The shader's colours for a workspace colour @hex, in dark or light style,
 // with saturation scaled by @strength (1 at "strong")
