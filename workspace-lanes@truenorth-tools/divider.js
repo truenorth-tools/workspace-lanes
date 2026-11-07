@@ -8,6 +8,13 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
+// Clutter's settings (double-click time, long-press duration...).
+// GNOME 51 dropped Clutter.Settings.get_default() for the context's.
+export function clutterSettings() {
+    return Clutter.Settings.get_default?.() ??
+        global.stage.get_context().get_settings();
+}
+
 export class SwitcherDivider extends St.Widget {
     static [GObject.signals] = {
         // the width (logical px) the switcher should take while dragging
@@ -54,7 +61,7 @@ export class SwitcherDivider extends St.Widget {
 
         // GNOME 50's events don't count clicks, so time them
         const time = event.get_time();
-        const {doubleClickTime} = Clutter.Settings.get_default();
+        const {doubleClickTime} = clutterSettings();
         if (this._lastPress !== undefined && time - this._lastPress <= doubleClickTime) {
             this._lastPress = undefined;
             this._endDrag(false);

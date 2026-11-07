@@ -22,6 +22,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {DashItemContainer} from 'resource:///org/gnome/shell/ui/dash.js';
 
+import {clutterSettings} from './divider.js';
+
 const ICON_TEXTURE_SIZE = 24;
 
 const DRAG_OPACITY = 0.3;
@@ -419,7 +421,7 @@ class BaseButton extends DashItemContainer {
         if (this._longPressTimeoutId)
             return;
 
-        const {longPressDuration} = Clutter.Settings.get_default();
+        const {longPressDuration} = clutterSettings();
         this._longPressTimeoutId =
             GLib.timeout_add_once(GLib.PRIORITY_DEFAULT, longPressDuration, () => {
                 delete this._longPressTimeoutId;
