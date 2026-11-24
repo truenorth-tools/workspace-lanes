@@ -332,3 +332,27 @@
 .lanes-apps-list:rtl {
   padding-left: 3px;
 }
+
+/* window thumbnails picked from a grouped app's button (buttons.js);
+   the menu itself takes the shell theme's colours */
+.lanes-thumbnail-picker {
+  spacing: 4px;
+}
+
+.lanes-thumbnail-item {
+  padding: 5px 7px 7px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+
+.lanes-thumbnail-box {
+  spacing: 6px;
+}
+
+.lanes-thumbnail-title .window-button-box {
+  spacing: 6px;
+}
+
+.lanes-thumbnail-current {
+  border-color: -st-accent-color;
+}

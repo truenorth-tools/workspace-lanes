@@ -11,6 +11,7 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
+import Meta from 'gi://Meta';
 import Mtk from 'gi://Mtk';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -31,6 +32,15 @@ const DRAG_FADE_DURATION = 200;
 
 const ATTENTION_INDICATOR_MAX_SCALE = 0.4;
 const ATTENTION_INDICATOR_TRANSITION_DURATION = 300;
+
+// Window thumbnails in a group's picker: at most this wide, fewer pixels
+// when many windows have to share the monitor's width
+const THUMBNAIL_MAX_WIDTH = 240;
+const THUMBNAIL_MIN_WIDTH = 96;
+const THUMBNAIL_ROW_FRACTION = 0.9;
+// room for an item's padding and the gap between items
+const THUMBNAIL_ITEM_EXTRA = 24;
+const MINIMIZED_THUMBNAIL_OPACITY = 128;
 
 class WindowContextMenu extends PopupMenu.PopupMenu {
     constructor(source, metaWindow) {
@@ -324,6 +334,66 @@ class AppTitle extends TitleWidget {
         const needsAttention =
             [...this._windows].some(w => w.urgent || w.demandsAttention);
         this.setNeedsAttention(needsAttention);
+    }
+}
+
+// A live, scaled-down copy of a window with its title above, for a
+// group's picker
+class WindowThumbnailItem extends PopupMenu.PopupBaseMenuItem {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(window, width, height) {
+        super({style_class: 'lanes-thumbnail-item'});
+
+        this._window = window;
+
+        const box = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'lanes-thumbnail-box',
+            width,
+        });
+        this.add_child(box);
+
+        const title = new WindowTitle(window);
+        title.add_style_class_name('lanes-thumbnail-title');
+        box.add_child(title);
+
+        // the frame is fitted into width x height; the clone also covers
+        // the shadows around it, which the clip trims at the edges
+        const holder = new Clutter.Actor({
+            width,
+            height,
+            clip_to_allocation: true,
+        });
+        box.add_child(holder);
+
+        const actor = window.get_compositor_private();
+        if (!actor)
+            return;
+
+        const frame = window.get_frame_rect();
+        const buffer = window.get_buffer_rect();
+        const scale = Math.min(
+            width / Math.max(frame.width, 1),
+            height / Math.max(frame.height, 1),
+            1);
+        const left = (width - frame.width * scale) / 2;
+        const top = (height - frame.height * scale) / 2;
+        const clone = new Clutter.Clone({
+            source: actor,
+            x: Math.round(left + (buffer.x - frame.x) * scale),
+            y: Math.round(top + (buffer.y - frame.y) * scale),
+            width: Math.round(buffer.width * scale),
+            height: Math.round(buffer.height * scale),
+            opacity: window.minimized ? MINIMIZED_THUMBNAIL_OPACITY : 255,
+        });
+        holder.add_child(clone);
+    }
+
+    get window() {
+        return this._window;
     }
 }
 
@@ -648,6 +718,8 @@ export class AppButton extends BaseButton {
 
         this._menuManager = new PopupMenu.PopupMenuManager(this);
         this._menu = new PopupMenu.PopupMenu(this, 0.5, St.Side.BOTTOM);
+        this._menu.box.orientation = Clutter.Orientation.HORIZONTAL;
+        this._menu.box.add_style_class_name('lanes-thumbnail-picker');
         this._menu.actor.hide();
         this._menu.connect('activate', this._onMenuActivate.bind(this));
         this._menuManager.addMenu(this._menu);
@@ -667,6 +739,12 @@ export class AppButton extends BaseButton {
     }
 
     setWindows(windows) {
+        // the picker shows the old windows; don't leave it out of date
+        const changed = windows.length !== this._windows.length ||
+            windows.some(w => !this._windows.includes(w));
+        if (changed && this._menu.isOpen)
+            this._menu.close();
+
         this._windows = windows;
         this._appTitle.setWindows(windows);
         this._updateStyle();
@@ -690,15 +768,14 @@ export class AppButton extends BaseButton {
             if (menuWasOpen)
                 return;
 
-            this._menu.removeAll();
-            for (const window of this._windows) {
-                const windowTitle = new WindowTitle(window);
-                const item = new PopupMenu.PopupBaseMenuItem();
-                item.add_child(windowTitle);
-                item._window = window;
-                this._menu.addMenuItem(item);
+            // bring back the app's window that was on top last; once the
+            // app is in front, clicking again picks between its windows
+            if (!this._isFocused()) {
+                this._mostRecentWindow()?.activate(global.get_current_time());
+                return;
             }
-            this._openMenu(this._menu);
+
+            this._openPicker();
         } else {
             if (contextMenuWasOpen)
                 return;
@@ -706,12 +783,41 @@ export class AppButton extends BaseButton {
         }
     }
 
+    // The group's window used last, from GNOME's own Alt+Tab order
+    _mostRecentWindow() {
+        const recent = global.display.get_tab_list(Meta.TabList.NORMAL_ALL, null);
+        return recent.find(w => this._windows.includes(w)) ?? this._windows[0];
+    }
+
+    // A row of thumbnails, sized so they all fit across the monitor
+    _openPicker() {
+        this._menu.removeAll();
+
+        const monitor = Main.layoutManager.findMonitorForActor(this) ??
+            Main.layoutManager.primaryMonitor;
+        const count = Math.max(this._windows.length, 1);
+        const share = monitor.width * THUMBNAIL_ROW_FRACTION / count -
+            THUMBNAIL_ITEM_EXTRA;
+        const width = Math.round(Math.clamp(share,
+            THUMBNAIL_MIN_WIDTH, THUMBNAIL_MAX_WIDTH));
+        const height = Math.round(width * monitor.height / monitor.width);
+
+        const current = this._mostRecentWindow();
+        for (const window of this._windows) {
+            const item = new WindowThumbnailItem(window, width, height);
+            if (window === current)
+                item.add_style_class_name('lanes-thumbnail-current');
+            this._menu.addMenuItem(item);
+        }
+        this._openMenu(this._menu);
+    }
+
     _canOpenPopupMenu() {
         return !this._menu.isOpen;
     }
 
     _onMenuActivate(menu, child) {
-        child._window.activate(global.get_current_time());
+        child.window.activate(global.get_current_time());
     }
 
     _onDestroy() {
