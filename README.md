@@ -139,9 +139,23 @@ fixed number, and workspace names), as in Window List.
 In the window list layout, the switcher's width is set by dragging the
 divider before it rather than in Settings.
 
+## PaperWM
+
+Workspace Lanes works alongside [PaperWM](https://github.com/paperwm/PaperWM)
+when it's installed and enabled; without it, none of this applies.
+
+- Window buttons appear on the taskbar of the display the window's strip is
+  on, in strip order, including windows scrolled out of view.
+- The selected window is highlighted while moving through PaperWM's
+  navigator and Alt+Tab.
+- Workspace backgrounds also tint PaperWM's per-workspace backgrounds.
+- A display other than the primary that shows its own PaperWM workspace gets
+  a plain row of that workspace's windows; the primary's lanes and switcher
+  leave that workspace out.
+
 ## Install
 
-Workspace Lanes needs GNOME Shell 50.
+Workspace Lanes needs GNOME Shell 50 or 51.
 
 **From a release:** download
 `workspace-lanes@truenorth-tools.shell-extension.zip` from the
@@ -201,6 +215,7 @@ Close the window or press Ctrl+C to stop it.
 - `appsMenu.js`: the applications menu button (from GNOME Shell Extensions' Apps Menu)
 - `preview.js`: hover preview of a workspace
 - `expose.js`: the exposé (the workspace's windows spread out) opened by clicking the current workspace again
+- `paperwm.js`: optional PaperWM support (reads PaperWM's layout when it's running)
 - `switcher.js`: follows the window selected in GNOME's Alt+` and Alt+Tab switchers
 - `colors.js`: workspace colour coding (generated stylesheet, top bar tint, accent colour)
 - `palette.js`: default colours and colour strengths, shared with the settings window

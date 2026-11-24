@@ -23,6 +23,8 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import * as Background from 'resource:///org/gnome/shell/ui/background.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {compareInStrip, windowMonitor} from './paperwm.js';
+
 const OPEN_TIME = 250;
 const STEP_TIME = 220;
 
@@ -54,8 +56,23 @@ const Mode = {
     OPEN: 1,
 };
 
+// GNOME's "move window to workspace" shortcuts (Super+Shift+Page Up/Down
+// and the rest), read from the user's keybindings: in the exposé they
+// send the selected window, and the exposé follows it there
+const MOVE_ACTIONS = new Map([
+    [Meta.KeyBindingAction.MOVE_TO_WORKSPACE_LEFT, 'left'],
+    [Meta.KeyBindingAction.MOVE_TO_WORKSPACE_RIGHT, 'right'],
+    [Meta.KeyBindingAction.MOVE_TO_WORKSPACE_UP, 'up'],
+    [Meta.KeyBindingAction.MOVE_TO_WORKSPACE_DOWN, 'down'],
+    [Meta.KeyBindingAction.MOVE_TO_WORKSPACE_LAST, 'last'],
+]);
+
 // Left to right, then top to bottom, then oldest first: the lane's order
 function compareSpatial(a, b) {
+    // PaperWM's strip order, when it tiles both
+    const strip = compareInStrip(a, b);
+    if (strip !== null)
+        return strip;
     const ra = a.get_frame_rect();
     const rb = b.get_frame_rect();
     return ra.x - rb.x ||
@@ -148,6 +165,7 @@ export class LanesExpose extends St.Widget {
         this._wsClass = null;
         this._generation = 0;
         this._focusIdleId = 0;
+        this._followSelection = null;
 
         // the workspace's own wallpaper, blurred and darkened
         this._backdrop = new Clutter.Actor({
@@ -369,7 +387,8 @@ export class LanesExpose extends St.Widget {
         this._setWorkspace(workspace);
         this._windowsGroup.destroy_all_children();
         this._items.clear();
-        this._selected = null;
+        // a window moved over with the shortcut stays selected
+        this._selected = this._followSelection ?? null;
         this._mode = Mode.OPEN;
         this._sync(true);
     }
@@ -379,6 +398,35 @@ export class LanesExpose extends St.Widget {
             return;
         Main.popModal(this._grab);
         this._grab = null;
+    }
+
+    // Send the selected window to a neighbouring workspace (or the last
+    // one), as GNOME does: the workspace switches with it and gives it
+    // focus. The exposé follows, with the window still selected
+    _moveSelected(target) {
+        const window = this._selected;
+        if (!window || !this._items.has(window))
+            return;
+        // as GNOME: windows on every workspace, or on a secondary display
+        // when workspaces are only on the primary, stay put
+        if (window.is_always_on_all_workspaces() || window.on_all_workspaces ||
+            (Meta.prefs_get_workspaces_only_on_primary() &&
+             window.get_monitor() !== Main.layoutManager.primaryIndex))
+            return;
+
+        const manager = global.workspace_manager;
+        const workspace = target === 'last'
+            ? manager.get_workspace_by_index(manager.n_workspaces - 1)
+            : this._workspace.get_neighbor(Meta.MotionDirection[target.toUpperCase()]);
+        if (!workspace || workspace === this._workspace)
+            return;
+
+        this._followSelection = window;
+        try {
+            Main.wm.actionMoveWindow(window, workspace);
+        } finally {
+            this._followSelection = null;
+        }
     }
 
     _fadeChrome(opacity) {
@@ -398,7 +446,7 @@ export class LanesExpose extends St.Widget {
             !w.skip_taskbar &&
             !w.minimized &&
             !w.is_attached_dialog() &&
-            w.get_monitor() === index &&
+            windowMonitor(w) === index &&
             w.get_compositor_private()).sort(compareSpatial);
     }
 
@@ -614,7 +662,7 @@ export class LanesExpose extends St.Widget {
         if (this._windows.length === 0)
             this._hint.text = _('No windows on this workspace');
         else
-            this._hint.text = _('Click a window to bring it forward · Scroll to switch workspace');
+            this._hint.text = _('Click a window to bring it forward · Super+Shift+Page Up/Down to move it · Scroll to switch workspace');
         this._placeHeading();
     }
 
@@ -706,6 +754,13 @@ export class LanesExpose extends St.Widget {
     vfunc_key_press_event(event) {
         if (!this.isOpen)
             return Clutter.EVENT_PROPAGATE;
+
+        const action = global.display.get_keybinding_action(
+            event.get_key_code(), event.get_state());
+        if (MOVE_ACTIONS.has(action)) {
+            this._moveSelected(MOVE_ACTIONS.get(action));
+            return Clutter.EVENT_STOP;
+        }
 
         switch (event.get_key_symbol()) {
         case Clutter.KEY_Escape:

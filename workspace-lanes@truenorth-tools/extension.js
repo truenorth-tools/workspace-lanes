@@ -34,6 +34,9 @@ import {WorkspaceColors} from './colors.js';
 import {LightShell} from './lightShell.js';
 import {SwitcherDivider} from './divider.js';
 import {SettingsWindowFocus} from './settingsWindow.js';
+import {
+    PaperWMWatcher, compareInStrip, primaryWorkspace, secondaryWorkspaces, windowMonitor,
+} from './paperwm.js';
 import {SwitcherWatcher} from './switcher.js';
 import {WorkspaceBackgrounds} from './backgrounds.js';
 import {LanesExpose} from './expose.js';
@@ -73,6 +76,10 @@ function workspaceIndex(window) {
 
 // Left to right, then top to bottom, then oldest first
 function compareSpatial(a, b) {
+    // PaperWM's strip order, when it tiles both
+    const strip = compareInStrip(a, b);
+    if (strip !== null)
+        return strip;
     const ra = a.get_frame_rect();
     const rb = b.get_frame_rect();
     return ra.x - rb.x ||
@@ -582,7 +589,9 @@ class Section extends St.Widget {
         GObject.registerClass(this);
     }
 
-    constructor(index, settings, switcher) {
+    // @number is the workspace's place on the primary display, which skips
+    // the workspaces secondary displays keep under PaperWM
+    constructor(index, settings, switcher, number = index) {
         super({
             style_class: 'lanes-section',
             layout_manager: new Clutter.BinLayout(),
@@ -599,7 +608,7 @@ class Section extends St.Widget {
         this.add_child(box);
 
         this.add_style_class_name(`lanes-ws-${index}`);
-        box.add_child(workspaceLabel(index, settings));
+        box.add_child(workspaceLabel(number, settings));
 
         this.row = new ButtonRow(settings, switcher, {
             iconStage: true,
@@ -620,8 +629,15 @@ class Section extends St.Widget {
         return this.row.buttons;
     }
 
+    // With PaperWM the active workspace follows the pointer onto other
+    // displays; the primary's taskbar marks the one the primary shows
+    get shown() {
+        return (primaryWorkspace() ?? global.workspace_manager.get_active_workspace()) ===
+            this.workspace;
+    }
+
     _syncActive() {
-        setStyleClass(this, 'active', this.workspace.active);
+        setStyleClass(this, 'active', this.shown);
     }
 
     _onEmptySpace(event) {
@@ -641,7 +657,7 @@ class Section extends St.Widget {
 
         this._pressed = false;
         if (event.get_button() === Clutter.BUTTON_PRIMARY && this._onEmptySpace(event)) {
-            if (this.workspace.active)
+            if (this.workspace.active && this.shown)
                 this.emit('clicked-active');
             else
                 this.workspace.activate(event.get_time());
@@ -841,9 +857,34 @@ class Bar extends St.Widget {
 
     // Whether this monitor has workspaces of its own (only the primary
     // does when workspaces are on the primary display only)
+    // (only the primary does when workspaces are on the primary display
+    // only, or with PaperWM showing a secondary display a workspace of its
+    // own: see paperwm.js)
     get _hasWorkspaces() {
         return this._monitor === Main.layoutManager.primaryMonitor ||
-            !this._mutterSettings.get_boolean('workspaces-only-on-primary');
+            (!this._mutterSettings.get_boolean('workspaces-only-on-primary') &&
+             !this._keepsOwnWorkspace);
+    }
+
+    // A secondary display that PaperWM gives a workspace of its own
+    get _keepsOwnWorkspace() {
+        return this._monitor !== Main.layoutManager.primaryMonitor &&
+            secondaryWorkspaces().size > 0;
+    }
+
+    // The workspaces this bar shows a section for: on the primary, all but
+    // the ones secondary displays keep
+    _sectionWorkspaces() {
+        const manager = global.workspace_manager;
+        const elsewhere = this._monitor === Main.layoutManager.primaryMonitor
+            ? secondaryWorkspaces() : new Set();
+        const workspaces = [];
+        for (let i = 0; i < manager.n_workspaces; i++) {
+            const workspace = manager.get_workspace_by_index(i);
+            if (!elsewhere.has(workspace))
+                workspaces.push(workspace);
+        }
+        return workspaces;
     }
 
     get _useSections() {
@@ -852,6 +893,7 @@ class Bar extends St.Widget {
 
     // Build the bar contents for the current layout
     _rebuild() {
+        this._builtHasWorkspaces = this._hasWorkspaces;
         this._hidePreview();
         this._box.destroy_all_children();
         this._appsButton = null;
@@ -881,7 +923,8 @@ class Bar extends St.Widget {
                 iconStage: false,
                 labelMin: LIST_LABEL_MIN,
                 tooltips: false,
-                groupWorkspaces: true,
+                // one workspace only, so no numbered groups
+                groupWorkspaces: !this._keepsOwnWorkspace,
             });
             this._box.add_child(this._row);
             this._watchRowDrags(this._row);
@@ -966,9 +1009,9 @@ class Bar extends St.Widget {
         this._sectionsBox.destroy_all_children();
         this._sections = [];
 
-        const {nWorkspaces} = global.workspace_manager;
-        for (let i = 0; i < nWorkspaces; i++) {
-            const section = new Section(i, this._settings, this._switcher);
+        this._sectionWorkspaces().forEach((workspace, number) => {
+            const section = new Section(workspace.index(), this._settings,
+                this._switcher, number);
             section.connect('notify::hover', () => this._onSectionHover(section));
             section.connect('clicked-active', () => this._toggleExpose(section.workspace));
             section.row.connect('button-hover',
@@ -977,22 +1020,29 @@ class Bar extends St.Widget {
             this._setupSectionDrops(section);
             this._sectionsBox.add_child(section);
             this._sections.push(section);
-        }
+        });
     }
 
     _sectionsStale() {
-        const {workspaceManager} = global;
-        return this._sections.length !== workspaceManager.nWorkspaces ||
+        const workspaces = this._sectionWorkspaces();
+        return this._sections.length !== workspaces.length ||
             this._sections.some((s, i) =>
-                s.workspace !== workspaceManager.get_workspace_by_index(i));
+                s.workspace !== workspaces[i] || s.index !== workspaces[i].index());
     }
 
     _onMonitor(window) {
-        return !this._perMonitor || window.get_monitor() === this._monitor.index;
+        return !this._perMonitor || windowMonitor(window) === this._monitor.index;
     }
 
     // Re-read every window and hand each row its sorted share
     sync(newWindows) {
+        // PaperWM started or stopped, or a display was given a workspace
+        // of its own
+        if (this._builtHasWorkspaces !== this._hasWorkspaces) {
+            this._rebuild();
+            return;
+        }
+
         const windows = this._model.windows.filter(w => this._onMonitor(w));
         const {workspaceManager} = global;
 
@@ -1000,23 +1050,28 @@ class Bar extends St.Widget {
             if (this._sectionsStale())
                 this._rebuildSections();
 
-            const active = workspaceManager.get_active_workspace_index();
-            const buckets = this._sections.map(() => []);
+            const buckets = new Map(this._sections.map(s => [s.workspace, []]));
+            const current = this._sections.find(s => s.shown)?.workspace;
             for (const window of windows) {
                 // windows on every workspace live in the current section
-                const index = workspaceIndex(window);
-                buckets[index === Infinity ? active : index]?.push(window);
+                const workspace = window.on_all_workspaces ? current : window.get_workspace();
+                buckets.get(workspace)?.push(window);
             }
-            this._sections.forEach((section, i) =>
-                section.row.setWindows(buckets[i].sort(compareSpatial), newWindows));
+            this._sections.forEach(section => {
+                section._syncActive();
+                section.row.setWindows(buckets.get(section.workspace).sort(compareSpatial),
+                    newWindows);
+            });
         } else if (this._row) {
             const workspace = workspaceManager.get_active_workspace();
-            const showAll = this._settings.get_boolean('display-all-workspaces');
+            const showAll = this._settings.get_boolean('display-all-workspaces') ||
+                this._keepsOwnWorkspace;
             const shown = windows.filter(w => showAll || w.located_on_workspace(workspace));
             this._row.setWindows(shown.sort(compareWorkspaceThenSpatial), newWindows);
             this._updateWorkspaceIndicatorVisibility();
         }
 
+        this._workspaceIndicator?._thumbnails?.refreshShown?.();
         this._preview?.refresh();
         this._expose?.refresh();
     }
@@ -1570,7 +1625,12 @@ export default class WorkspaceLanesExtension extends Extension {
         this._colors = new WorkspaceColors(this._settings, this._interfaceSettings);
         this._lightShell = new LightShell(this._settings);
         this._backgrounds = new WorkspaceBackgrounds(this._settings, this._interfaceSettings);
-        this._switcher = new SwitcherWatcher();
+        this._paperwm = new PaperWMWatcher();
+        // PaperWM starting, stopping or moving a strip can change which
+        // display a window's button belongs on
+        this._paperwm.connectObject('changed',
+            () => this._model.queueChanged(), this);
+        this._switcher = new SwitcherWatcher(this._paperwm);
         this._settingsWindowFocus = new SettingsWindowFocus();
 
         this._settings.connectObject('changed::show-on-all-monitors',
@@ -1620,6 +1680,10 @@ export default class WorkspaceLanesExtension extends Extension {
 
         this._switcher.destroy();
         this._switcher = null;
+
+        this._paperwm.disconnectObject(this);
+        this._paperwm.destroy();
+        this._paperwm = null;
 
         this._settingsWindowFocus.destroy();
         this._settingsWindowFocus = null;

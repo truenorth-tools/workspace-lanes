@@ -5,11 +5,15 @@
 // colour, so its shapes stay) or a gradient. Done with a shader on each
 // background actor the shell draws for a workspace: the desktop's, the
 // overview's workspace cards, the ones that slide past when switching
-// and the hover preview's.
+// and the hover preview's. Extensions that draw their own desktop
+// backgrounds instead (PaperWM, which covers the desktop with one per
+// workspace) get theirs recoloured too.
 
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
+import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 
 import {InjectionManager} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -17,11 +21,14 @@ import * as Background from 'resource:///org/gnome/shell/ui/background.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Workspace from 'resource:///org/gnome/shell/ui/workspace.js';
 import * as WorkspaceAnimation from 'resource:///org/gnome/shell/ui/workspaceAnimation.js';
+import {ExtensionState} from 'resource:///org/gnome/shell/misc/extensionUtils.js';
 
 import {hexToHsl, hslToRgb} from './colors.js';
 import {COLOR_PARTS, INTENSITY, prefersDark, workspaceColor} from './palette.js';
 
 const EFFECT_NAME = 'workspace-lanes-background';
+
+const PAPERWM_UUID = 'paperwm@paperwm.github.com';
 
 const DECLARATIONS = `
 uniform float mode;
@@ -118,6 +125,15 @@ export class WorkspaceBackgrounds {
         this._interface = interfaceSettings;
         // background manager → the function giving its workspace's index
         this._tracked = new Map();
+        // other extensions' background actors → their destroy handler id
+        this._foreign = new Map();
+        // containers under the desktop's background group being watched
+        // for new background actors → their child-added and destroy ids
+        this._watched = new Map();
+        this._scanId = 0;
+        // PaperWM's tiling module, to tell which workspace each of its
+        // backgrounds belongs to
+        this._paperwm = null;
         this._injections = new InjectionManager();
 
         this._interface.connectObject('changed::color-scheme',
@@ -136,9 +152,18 @@ export class WorkspaceBackgrounds {
             'notify::n-workspaces', () => this._applyAll(),
             'workspaces-reordered', () => this._applyAll(),
             this);
+        Main.layoutManager.connectObject('monitors-changed',
+            () => this._queueScan(), this);
+        Main.extensionManager.connectObject('extension-state-changed',
+            (_manager, extension) => {
+                if (extension.uuid === PAPERWM_UUID)
+                    this._loadPaperWM();
+            }, this);
 
         this._inject();
         this._trackExisting();
+        this._loadPaperWM();
+        this._queueScan();
     }
 
     get _style() {
@@ -212,6 +237,95 @@ export class WorkspaceBackgrounds {
         visit(Main.layoutManager.overviewGroup);
     }
 
+    // PaperWM keeps a Space per workspace, each with its own background
+    // actor; its module is already loaded, so importing it gives the live
+    // one rather than a copy
+    async _loadPaperWM() {
+        const extension = Main.extensionManager.lookup(PAPERWM_UUID);
+        let paperwm = null;
+        if (extension?.state === ExtensionState.ACTIVE) {
+            try {
+                paperwm = await import(extension.dir.get_child('tiling.js').get_uri());
+            } catch (e) {
+                console.debug(`Workspace Lanes: can't read PaperWM's workspaces: ${e}`);
+            }
+        }
+        if (this._destroyed)
+            return;
+        this._paperwm = paperwm;
+        this._queueScan();
+    }
+
+    // Other extensions' backgrounds get added at odd times (on enable, when
+    // monitors or workspaces change, when the wallpaper changes), so look
+    // for them once things settle
+    _queueScan() {
+        if (this._scanId)
+            return;
+        this._scanId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._scanId = 0;
+            this._scanForeign();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // Track every background actor under the desktop's background group
+    // that isn't one of the shell's own, and watch the containers on the
+    // way for new ones
+    _scanForeign() {
+        const own = new Set();
+        for (const bgManager of this._tracked.keys()) {
+            own.add(bgManager.backgroundActor);
+            own.add(bgManager._newBackgroundActor);
+        }
+
+        const visit = actor => {
+            if (actor instanceof Meta.BackgroundActor) {
+                if (!own.has(actor))
+                    this._trackForeign(actor);
+                return;
+            }
+            // window clones can't hold a desktop background
+            if (actor instanceof Meta.WindowActor || actor instanceof Clutter.Clone)
+                return;
+
+            if (!this._watched.has(actor)) {
+                this._watched.set(actor, [
+                    actor.connect('child-added', () => this._queueScan()),
+                    actor.connect('destroy', () => this._watched.delete(actor)),
+                ]);
+            }
+            for (const child of actor.get_children())
+                visit(child);
+        };
+        visit(Main.layoutManager._backgroundGroup);
+    }
+
+    _trackForeign(actor) {
+        if (!this._foreign.has(actor)) {
+            this._foreign.set(actor, actor.connect('destroy',
+                () => this._foreign.delete(actor)));
+        }
+        this._applyForeign(actor);
+    }
+
+    // The workspace a background of another extension shows: PaperWM's
+    // belong to the Space they sit in, anything else follows the active one
+    _foreignIndex(actor) {
+        const spaces = this._paperwm?.spaces;
+        if (spaces) {
+            try {
+                for (const space of spaces.values()) {
+                    if (space.actor?.contains(actor))
+                        return space.workspace.index();
+                }
+            } catch (e) {
+                console.debug(`Workspace Lanes: can't read PaperWM's workspaces: ${e}`);
+            }
+        }
+        return this._activeIndex();
+    }
+
     // Recolour a background made outside the shell's own ones (the hover
     // preview's), showing workspace getIndex()
     track(bgManager, getIndex) {
@@ -249,6 +363,25 @@ export class WorkspaceBackgrounds {
         if (!actor)
             return;
 
+        // a background the scan took for another extension's is the
+        // shell's after all
+        const destroyId = this._foreign.get(actor);
+        if (destroyId) {
+            actor.disconnect(destroyId);
+            this._foreign.delete(actor);
+        }
+
+        const {getIndex} = this._tracked.get(bgManager);
+        this._tint(actor, getIndex());
+    }
+
+    _applyForeign(actor) {
+        this._tint(actor, this._foreignIndex(actor));
+    }
+
+    // Recolour @actor in workspace @index's colour, or take the colour off
+    // when workspace backgrounds are off
+    _tint(actor, index) {
         let effect = actor.get_effect(EFFECT_NAME);
         const style = this._style;
         const strength = this._strength();
@@ -263,24 +396,43 @@ export class WorkspaceBackgrounds {
             actor.add_effect_with_name(EFFECT_NAME, effect);
         }
 
-        const {getIndex} = this._tracked.get(bgManager);
         const custom = this._settings.get_strv('workspace-colors');
         const dark = prefersDark(this._interface);
         // a workspace removed mid-animation has no index any more
-        const index = Math.max(getIndex(), 0);
+        index = Math.max(index, 0);
         effect.setColors(shadesFor(workspaceColor(custom, index), style, dark, strength));
     }
 
     _applyAll() {
         for (const bgManager of this._tracked.keys())
             this._apply(bgManager);
+        for (const actor of this._foreign.keys())
+            this._applyForeign(actor);
     }
 
     destroy() {
+        this._destroyed = true;
         this._injections.clear();
         this._interface.disconnectObject(this);
         this._settings.disconnectObject(this);
         global.workspace_manager.disconnectObject(this);
+        Main.layoutManager.disconnectObject(this);
+        Main.extensionManager.disconnectObject(this);
+        if (this._scanId)
+            GLib.source_remove(this._scanId);
+        this._scanId = 0;
+
+        for (const [container, ids] of this._watched)
+            ids.forEach(id => container.disconnect(id));
+        this._watched.clear();
+        for (const [actor, destroyId] of this._foreign) {
+            actor.disconnect(destroyId);
+            const effect = actor.get_effect(EFFECT_NAME);
+            if (effect)
+                actor.remove_effect(effect);
+        }
+        this._foreign.clear();
+        this._paperwm = null;
 
         for (const [bgManager, {changedId}] of this._tracked) {
             bgManager.disconnect(changedId);

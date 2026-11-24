@@ -19,6 +19,8 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 
+import {secondaryWorkspaces} from './paperwm.js';
+
 const SCROLL_TIME = 100;
 
 // Workspace Lanes: thumbnail widths. A workspace with windows is
@@ -479,12 +481,32 @@ class WorkspacePreviews extends Clutter.Actor {
         return this._lastOverhead;
     }
 
-    _updateThumbnails() {
-        const {nWorkspaces} = global.workspace_manager;
+    // Workspace Lanes: the workspaces shown, all but those PaperWM keeps on
+    // secondary displays
+    _shownWorkspaces() {
+        const manager = global.workspace_manager;
+        const elsewhere = secondaryWorkspaces();
+        const shown = [];
+        for (let i = 0; i < manager.n_workspaces; i++) {
+            const workspace = manager.get_workspace_by_index(i);
+            if (!elsewhere.has(workspace))
+                shown.push(i);
+        }
+        return shown;
+    }
 
+    // Workspace Lanes: rebuild if a display was given a workspace of its own
+    refreshShown() {
+        const shown = this._shownWorkspaces();
+        const current = [...this._thumbnailsBox].map(t => t._index);
+        if (shown.length !== current.length || shown.some((i, n) => i !== current[n]))
+            this._updateThumbnails();
+    }
+
+    _updateThumbnails() {
         this._thumbnailsBox.destroy_all_children();
 
-        for (let i = 0; i < nWorkspaces; i++) {
+        for (const i of this._shownWorkspaces()) {
             const thumbnail = new WorkspaceThumbnail(i);
             thumbnail.connect('used-changed', () => this._sizeThumbnails(true));
             this._thumbnailsBox.add_child(thumbnail);
